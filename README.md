@@ -1,5 +1,10 @@
 # Predicting_bike_distribution
 
+21 / 07 / 2021
+
+* TODO: Sort station_var values by epoch_time
+* Not popping missing stations from arrays anymore because that leads to station ids not being usable as indices for these arrays
+
 20 / 07 / 2021
 
 * Assuming for now I should train on data for all bike stations but test on select ones
