@@ -5,6 +5,7 @@
 * There's a bug when you set INPUT_ROWS_LIMIT a good bit over 1,000,000
 * Feature brainstorm: Getting rainfall data; lat & long where bikes leave, and then assuming they'll turn up at a distance in some time; increase / decrease in bikes at a station rather than bikes at a station; overall ratio of bikes that are out of stations vs bikes that are in stations
 * yep, there are certain days that are just missing but that shouldn't matter
+* TODO: in graphing cell, empty days that are having a colour allocated to them mean there are colours being wasted
 
 21 / 07 / 2021
 
