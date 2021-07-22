@@ -1,5 +1,9 @@
 # Predicting_bike_distribution
 
+22 / 07 / 2021
+
+* There's a bug when you set INPUT_ROWS_LIMIT a good bit over 1,000,000
+
 21 / 07 / 2021
 
 * TODO: Sort station_var values by epoch_time
