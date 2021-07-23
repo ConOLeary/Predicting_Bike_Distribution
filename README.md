@@ -1,5 +1,16 @@
 # Predicting_bike_distribution
 
+23 / 07 / 2021
+
+* Might try an MLPRegressor approach, with input nodes being:
+the 7 days of the week +
+the 18 active hours of the day +
+the fullness of the 117 stations +
+changes in capacity for the 117 stations in the past 10, 30, and 60 minutes,
+where the 7 are either 1 or 0 (it is that day or it's not),
+the 18 are from 0 to 1 (eg if it's half 6 when 6 and 7 are 0.5)
+and the 351 (117 * 3) are from 0 to N
+
 22 / 07 / 2021
 
 * There's a bug when you set INPUT_ROWS_LIMIT a good bit over 1,000,000
