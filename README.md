@@ -3,6 +3,7 @@
 24 / 07 / 2021
 
 * For purposes of MLPreg approach, DataDay information is now as sparse arrays. This is causing graphs to look funny though
+* I suspect long logs from print statements causing trouble for j notebook and github
 
 23 / 07 / 2021
 
