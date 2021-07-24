@@ -1,5 +1,9 @@
 # Predicting_bike_distribution
 
+24 / 07 / 2021
+
+* For purposes of MLPreg approach, DataDay information is now as sparse arrays. This is causing graphs to look funny though
+
 23 / 07 / 2021
 
 * Might try an MLPRegressor approach, with input nodes being:
