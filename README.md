@@ -5,7 +5,7 @@
 * For purposes of MLPreg approach, DataDay information is now as sparse arrays. This is causing graphs to look funny though
 * I suspect long logs from print statements causing trouble for j notebook and github
 * I need to make a change to the code in the .ipynb file so that the logs from the cells change
-* There are many holes in 'fullness' due to gaps in the data. Since features for a given time are dependent on there being data before it, I will only generate features where there has been data in all stations for the past hour and where there is data in all stations for the coming hour
+* There are many holes in 'fullness' due to gaps in the data. Since features for a given time are dependent on there being data before it, I will only generate sets of training features where there has been data in all stations for the past hour and where there is data in all stations for the coming hour
 
 23 / 07 / 2021
 
