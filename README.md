@@ -1,5 +1,10 @@
 # Predicting_bike_distribution
 
+25 / 07 / 2021
+
+* 5, 15, and 45 minutes seem to be more appropriate time spans to look at previous bike station fullness changes in
+* I want to change OPEN_HOURS to 18 but the data processing system ain't ready yet
+
 24 / 07 / 2021
 
 * For purposes of MLPreg approach, DataDay information is now as sparse arrays. This is causing graphs to look funny though
