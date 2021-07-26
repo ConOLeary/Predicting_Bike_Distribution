@@ -1,5 +1,8 @@
 # Predicting_bike_distribution
 
+
+* Some values in bikes_changes_past45 are greater than 100 - something must be wrong
+
 25 / 07 / 2021
 
 * 5, 15, and 45 minutes seem to be more appropriate time spans to look at previous bike station fullness changes in
