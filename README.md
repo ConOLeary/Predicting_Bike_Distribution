@@ -1,6 +1,17 @@
 # Predicting_bike_distribution
 
 
+27 / 07 / 2021
+
+* There are so many kinks to iron out in the data and how I am processing it - it's starting to feel like I am writing code into a blackhole and that the ways I am structuring the data are arbitrary and redundant
+An example of such a kink that I have just ironed out is changing
+self.day_of_week= (STARTING_DAY + int(epoch_time / DATAPOINTS_PER_DAY ) % len(DAYS_OF_WEEK))
+to
+self.day_of_week= (STARTING_DAY + int(epoch_time / (DATAPOINTS_PER_DAY - 1)) % len(DAYS_OF_WEEK))
+Although perhaps I have learned something here and not just applied a patchwork solution insofar as I imagine if there is a length of an array, I should universaly divide by the length of the array - 1
+
+26 / 07 / 2021
+
 * Some values in bikes_changes_past45 are greater than 100 - something must be wrong
 * 3d confusion matrix could be used to gauge results: e.g. negative change in bikes, no change, and positive. Perhaps a better way to visualise though
 
