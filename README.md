@@ -2,6 +2,7 @@
 
 
 * Some values in bikes_changes_past45 are greater than 100 - something must be wrong
+* 3d confusion matrix could be used to gauge results: e.g. negative change in bikes, no change, and positive. Perhaps a better way to visualise though
 
 25 / 07 / 2021
 
