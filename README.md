@@ -10,6 +10,10 @@ to
 self.day_of_week= (STARTING_DAY + int(epoch_time / (DATAPOINTS_PER_DAY - 1)) % len(DAYS_OF_WEEK))
 Although perhaps I have learned something here and not just applied a patchwork solution insofar as I imagine if there is a length of an array, I should universaly divide by the length of the array - 1
 * .ipynb often unviewable. Perhaps I should export a .py before every commit
+* Checklist at this point seems to be:
+Fix problem with start-edge bikes_changes_pastx
+Find way to exclude days with insufficent data
+Fix hour_of_day
 
 26 / 07 / 2021
 

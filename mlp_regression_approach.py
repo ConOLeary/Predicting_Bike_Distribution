@@ -17,6 +17,7 @@ FILENAME= 'dublinbikes_2020_Q1.csv'
 MAX_STATION_ID= 117
 SECS_IN_5MIN= 300
 DATAPOINTS_PER_DAY= 288
+DATAPOINTS_PER_HOUR= 12
 DAYS_OF_WEEK= ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] # yes, I consider Monday to be the '0'/start of the week
 STARTING_DAY= 2
 MISSING_STATIONS= [117, 116, 70, 60, 46, 35, 20, 14, 1]
@@ -124,7 +125,7 @@ with open(FILENAME, newline='') as f:
 #         print(stations[s_i].data_days[row_i].day_of_week)
 
 
-# In[128]:
+# In[ ]:
 
 
 # Approach 01 - Data Prep
@@ -144,23 +145,24 @@ for epoch_day_i in range(TOTAL_DAYS):
     print("########### epoch_day_i: ", epoch_day_i)
     x= epoch_day_i * (DATAPOINTS_PER_DAY - START_TIME)
     y= 0
+    day= stations[2].data_days[epoch_day_i].day_of_week
     
     block= np.zeros((DATAPOINTS_PER_DAY - START_TIME, OPEN_HOURS), dtype=np.float)
-    for time_i in range(OPEN_HOURS):
-        hour= float("{:.3f}".format(time_i / 12))
-        block[time_i][int(hour)]= 1 - (hour % 1)
-        block[time_i][int(hour) + 1]= hour % 1
-    hour_of_day[x:x + block.shape[0], y:y + block.shape[1]]= block
+    daily_epoch_time= stations[2].data_days[epoch_day_i].daily_epoch_time
+    for time_i in daily_epoch_time[START_TIME:]:
+        print("time_i: ", time_i)
+#         hour= float("{:.3f}".format(time_i / 12))
+#         block[time_i][int(hour)]= 1 - (hour % 1)
+#         block[time_i][int(hour) + 1]= hour % 1
+#     hour_of_day[x:x + block.shape[0], y:y + block.shape[1]]= block
     
     block= np.zeros((DATAPOINTS_PER_DAY - START_TIME, len(DAYS_OF_WEEK)), dtype=np.int)
-    day= stations[2].data_days[epoch_day_i].day_of_week
     for block_i, sub_arr in enumerate(block):
         block[block_i][day]= 1
     day_of_week[x:x + block.shape[0], y:y + block.shape[1]]= block
     
     for station in stations:
         print("###### station.index: ", station.index)
-        print(station.data_days[epoch_day_i].day_of_week)
         if station.index == 1:
             station_index_decrement= 1
         if station.index in MISSING_STATIONS:
