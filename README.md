@@ -1,5 +1,9 @@
 # Predicting_bike_distribution
 
+28 / 07 / 2021
+
+* Start-edge bikes_changes_pastx issue looking better
+    bikes_changes_pastx completely ironed out in processor effective way
 
 27 / 07 / 2021
 

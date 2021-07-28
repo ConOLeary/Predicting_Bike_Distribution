@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[122]:
+# In[ ]:
 
 
 import csv, sys
@@ -74,7 +74,7 @@ def get_station_id(name):
     return index
 
 
-# In[123]:
+# In[ ]:
 
 
 total_capacity= 0 # not in use currently
@@ -113,7 +113,7 @@ with open(FILENAME, newline='') as f:
         sys.exit('file {}, line {}: {}'.format(filename, reader.line_num, e))
 
 
-# In[125]:
+# In[ ]:
 
 
 # counter= 0
@@ -149,8 +149,8 @@ for epoch_day_i in range(TOTAL_DAYS):
     
     block= np.zeros((DATAPOINTS_PER_DAY - START_TIME, OPEN_HOURS), dtype=np.float)
     daily_epoch_time= stations[2].data_days[epoch_day_i].daily_epoch_time
-    for time_i in daily_epoch_time[START_TIME:]:
-        print("time_i: ", time_i)
+    #for time_i in daily_epoch_time[START_TIME:]:
+        #print("time_i: ", time_i)
 #         hour= float("{:.3f}".format(time_i / 12))
 #         block[time_i][int(hour)]= 1 - (hour % 1)
 #         block[time_i][int(hour) + 1]= hour % 1
@@ -166,7 +166,7 @@ for epoch_day_i in range(TOTAL_DAYS):
         if station.index == 1:
             station_index_decrement= 1
         if station.index in MISSING_STATIONS:
-            print("Rejected.")
+            #print("Rejected.")
             station_index_decrement+= 1
             continue
         y= station.index - station_index_decrement
@@ -181,25 +181,23 @@ for epoch_day_i in range(TOTAL_DAYS):
         block_15minchange= np.zeros(DATAPOINTS_PER_DAY - START_TIME, dtype=np.int)
         block_45minchange= np.zeros(DATAPOINTS_PER_DAY - START_TIME, dtype=np.int)
         for block_i in range(len(block)):
-            try:
-                five_ago= block[block_i - 1] # From here up until the $ sign deals with the edge cases at the start
-                fifteen_ago= block[block_i - 3]
-                fourtyfive_ago= block[block_i - 9]
-                if five_ago == DUD_VALUE:
-                    five_ago= block[block_i]
-                    fifteen_ago= five_ago
-                    fourtyfive_ago= five_ago
-                elif fifteen_ago == DUD_VALUE:
-                    fifteen_ago= five_ago
-                    fourtyfive_ago= five_ago
-                elif fourtyfive_ago == DUD_VALUE:
-                    fourtyfive_ago= fifteen_ago # $
-                block_5minchange[block_i]= block[block_i] - five_ago
-                block_15minchange[block_i]= block[block_i] - block[block_i - 3]
-                block_45minchange[block_i]= block[block_i] - block[block_i - 9]
-            except IndexError:
-                print("IndexError")
-                pass
+            five_ago= block[block_i]; fifteen_ago= block[block_i]; fourtyfive_ago= block[block_i];
+            accept= False
+            decrements= 10
+            for decrement in reversed(range(decrements)): # e.g. [9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
+                try:
+                    if block[block_i - min(1, decrement)] == DUD_VALUE or block[block_i - min(3, decrement)] == DUD_VALUE or block[block_i - min(9, decrement)] == DUD_VALUE:
+                        continue
+                    fourtyfive_ago= block[block_i - min(9, decrement)]
+                    fifteen_ago= block[block_i - min(3, decrement)]
+                    five_ago= block[block_i - min(1, decrement)]
+                    break
+                except IndexError:
+                    print("IndexError with ", decrement)
+                    continue
+            block_5minchange[block_i]= block[block_i] - five_ago
+            block_15minchange[block_i]= block[block_i] - fifteen_ago
+            block_45minchange[block_i]= block[block_i] - fourtyfive_ago
         block= np.reshape(block, (DATAPOINTS_PER_DAY - START_TIME, 1))
         block_5minchange= np.reshape(block_5minchange, (DATAPOINTS_PER_DAY - START_TIME, 1))
         block_15minchange= np.reshape(block_15minchange, (DATAPOINTS_PER_DAY - START_TIME, 1))
