@@ -22,7 +22,7 @@ DAYS_OF_WEEK= ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday
 STARTING_DAY= 2
 MISSING_STATIONS= [117, 116, 70, 60, 46, 35, 20, 14, 1]
 TOTAL_DAYS= 91
-OPEN_HOURS= 18 # want to change this to 18 i.e. excluding 1, 2, 3, and 4 am
+OPEN_HOURS= 20 # want to change this to 18 i.e. excluding 1, 2, 3, and 4 am
 MAX_DISPLAYED_STATIONS= 1
 MAX_DISPLAYED_DAYS= 10
 MAX_TIME= int((datetime.datetime(2020,4,2,0,0) - datetime.datetime(2020,1,1,0,0)).total_seconds() / SECS_IN_5MIN)
@@ -138,7 +138,7 @@ bikes_changes_past5= np.full((row_vol, MAX_STATION_ID - len(MISSING_STATIONS)), 
 bikes_changes_past15= np.full((row_vol, MAX_STATION_ID - len(MISSING_STATIONS)), DUD_VALUE, dtype=np.int)
 bikes_changes_past45= np.full((row_vol, MAX_STATION_ID - len(MISSING_STATIONS)), DUD_VALUE, dtype=np.int)
 day_of_week= np.full((row_vol, len(DAYS_OF_WEEK)), DUD_VALUE, dtype=np.int)
-hour_of_day= np.full((row_vol, OPEN_HOURS), DUD_VALUE, dtype=np.float)
+hour_of_day= np.full((row_vol, OPEN_HOURS + 1), DUD_VALUE, dtype=np.float) # + 1 because we need the 0th/24th hour to be represented despite its exclusion
 
 rejected_days= 0
 for epoch_day_i in range(TOTAL_DAYS):
@@ -147,14 +147,15 @@ for epoch_day_i in range(TOTAL_DAYS):
     y= 0
     day= stations[2].data_days[epoch_day_i].day_of_week
     
-    block= np.zeros((DATAPOINTS_PER_DAY - START_TIME, OPEN_HOURS), dtype=np.float)
-    daily_epoch_time= stations[2].data_days[epoch_day_i].daily_epoch_time
-    #for time_i in daily_epoch_time[START_TIME:]:
-        #print("time_i: ", time_i)
-#         hour= float("{:.3f}".format(time_i / 12))
-#         block[time_i][int(hour)]= 1 - (hour % 1)
-#         block[time_i][int(hour) + 1]= hour % 1
-#     hour_of_day[x:x + block.shape[0], y:y + block.shape[1]]= block
+    block= np.zeros((DATAPOINTS_PER_DAY - START_TIME, OPEN_HOURS + 1), dtype=np.float)
+    daily_epoch_time= stations[2].data_days[epoch_day_i].daily_epoch_time[START_TIME:]
+    for time_i in daily_epoch_time:
+        if time_i != DUD_VALUE:
+            hour= float("{:.3f}".format(time_i / 12))
+            hour-= START_TIME / DATAPOINTS_PER_HOUR
+            block[time_i - START_TIME][int(hour) + 1]= hour % 1
+            block[time_i - START_TIME][int(hour)]= 1 - (hour % 1)
+    hour_of_day[x:x + block.shape[0], y:y + block.shape[1]]= block
     
     block= np.zeros((DATAPOINTS_PER_DAY - START_TIME, len(DAYS_OF_WEEK)), dtype=np.int)
     for block_i, sub_arr in enumerate(block):
@@ -184,7 +185,7 @@ for epoch_day_i in range(TOTAL_DAYS):
             five_ago= block[block_i]; fifteen_ago= block[block_i]; fourtyfive_ago= block[block_i];
             accept= False
             decrements= 10
-            for decrement in reversed(range(decrements)): # e.g. [9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
+            for decrement in reversed(range(decrements)): # i.e. [9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
                 try:
                     if block[block_i - min(1, decrement)] == DUD_VALUE or block[block_i - min(3, decrement)] == DUD_VALUE or block[block_i - min(9, decrement)] == DUD_VALUE:
                         continue
@@ -195,9 +196,15 @@ for epoch_day_i in range(TOTAL_DAYS):
                 except IndexError:
                     print("IndexError with ", decrement)
                     continue
-            block_5minchange[block_i]= block[block_i] - five_ago
-            block_15minchange[block_i]= block[block_i] - fifteen_ago
-            block_45minchange[block_i]= block[block_i] - fourtyfive_ago
+            current= block[block_i]
+            decrement= 1
+            while current == DUD_VALUE and decrement < 10:
+                current= block[block_i - decrement]
+                decrement+= 1
+            #print("current: ", current)
+            block_5minchange[block_i]= current - five_ago
+            block_15minchange[block_i]= current - fifteen_ago
+            block_45minchange[block_i]= current - fourtyfive_ago
         block= np.reshape(block, (DATAPOINTS_PER_DAY - START_TIME, 1))
         block_5minchange= np.reshape(block_5minchange, (DATAPOINTS_PER_DAY - START_TIME, 1))
         block_15minchange= np.reshape(block_15minchange, (DATAPOINTS_PER_DAY - START_TIME, 1))

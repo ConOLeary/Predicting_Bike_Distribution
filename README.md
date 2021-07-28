@@ -4,6 +4,7 @@
 
 * Start-edge bikes_changes_pastx issue looking better
     bikes_changes_pastx completely ironed out in processor effective way
+* Looks like it could just be exclusing poor days of data that is left in the feature data generation
 
 27 / 07 / 2021
 
