@@ -4,6 +4,8 @@
 
 * Data from 27 / 1 / 2020 onwards is solid
 * hindsight is 20,20; data processing feeling more streamlined. just got to exclude gaps in data now
+* the edge cases of the block_xminchange arrays still have issues, but will sort those after the model is fit
+* going to take a gamble and instead of rooting out what poor data is between 27 / 1 and 1 / 4 I am going to change the DUD_VALUE to 0 and train the model
 
 28 / 07 / 2021
 
