@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[1]:
 
 
 import csv, sys
@@ -11,7 +11,7 @@ import matplotlib.cm as cm
 import numpy as np; np.set_printoptions(threshold=sys.maxsize)
 
 DUD_VALUE= 123
-TOTAL_ROWS= 2228278
+TOTAL_ROWS= 2228278 # This number is greater than the total amount of rows circa epoch change to 27th, but it still works
 INPUT_ROWS_LIMIT= TOTAL_ROWS # TOTAL_ROWS
 FILENAME= 'dublinbikes_2020_Q1.csv'
 MAX_STATION_ID= 117
@@ -19,15 +19,15 @@ SECS_IN_5MIN= 300
 DATAPOINTS_PER_DAY= 288
 DATAPOINTS_PER_HOUR= 12
 DAYS_OF_WEEK= ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] # yes, I consider Monday to be the '0'/start of the week
-STARTING_DAY= 2
+STARTING_DAY= 0 # aka Monday. Because the 27th of Jan 2020 is a Monday
 MISSING_STATIONS= [117, 116, 70, 60, 46, 35, 20, 14, 1]
-TOTAL_DAYS= 91
-OPEN_HOURS= 20 # want to change this to 18 i.e. excluding 1, 2, 3, and 4 am
+TOTAL_DAYS= 66 # from 27 / 1 / 2020 to (and including) 1 / 4 / 2020
+HOURS= 24
 MAX_DISPLAYED_STATIONS= 1
 MAX_DISPLAYED_DAYS= 10
-MAX_TIME= int((datetime.datetime(2020,4,2,0,0) - datetime.datetime(2020,1,1,0,0)).total_seconds() / SECS_IN_5MIN)
-START_TIME= int((datetime.datetime(2020, 1, 1, 4, 0) - datetime.datetime(2020, 1, 1, 0, 0)).total_seconds() / SECS_IN_5MIN) # bike sharing starts at 4am at earliest
-MAX_MISSING_STATIONS= 10
+EPOCH= datetime.datetime(2020, 1, 27, 0, 0)
+MAX_TIME= int((datetime.datetime(2020,4,2,0,0) - EPOCH).total_seconds() / SECS_IN_5MIN)
+DECREMENTS= 10
 
 class DataDay: # ideally this would be nested in the Station class
     def __init__(self, index):
@@ -35,7 +35,7 @@ class DataDay: # ideally this would be nested in the Station class
         self.times_populated= 0
         self.day_of_week= DUD_VALUE
         self.day_since_epoch= DUD_VALUE
-        self.day_of_week= ((STARTING_DAY - 1 + index) % len(DAYS_OF_WEEK))
+        self.day_of_week= ((STARTING_DAY + index - 1) % len(DAYS_OF_WEEK))
         
         self.daily_epoch_time= np.full(DATAPOINTS_PER_DAY, DUD_VALUE, dtype=np.int)
         self.epoch_time= np.full(DATAPOINTS_PER_DAY, DUD_VALUE, dtype=np.int)
@@ -57,7 +57,7 @@ class Station:
         self.address= DUD_VALUE
         self.latitude= DUD_VALUE
         self.longitude= DUD_VALUE
-        self.data_days= [DataDay(i) for i in range(1, TOTAL_DAYS + 3)] # Admitedly, I don't even know exactly why this has to be +3
+        self.data_days= [DataDay(i) for i in range(1, TOTAL_DAYS + 2)] # + 1 because 0 is excluded and + 1 because we want to include the last day, not have it as the rim
     
     def populate_consts(self, name, bike_capacity, address, latitude, longitude):
         self.name= name
@@ -74,7 +74,7 @@ def get_station_id(name):
     return index
 
 
-# In[ ]:
+# In[2]:
 
 
 total_capacity= 0 # not in use currently
@@ -103,8 +103,10 @@ with open(FILENAME, newline='') as f:
         for row_i, row in enumerate(reader):
             if row_i >= INPUT_ROWS_LIMIT:
                 break
+            if int((datetime.datetime(int(row[1][0:4]), int(row[1][5:7]), int(row[1][8:10]), int(row[1][11: 13]), int(row[1][14: 16])) - EPOCH).total_seconds()) < 0:
+                continue
             try:
-                epoch_time= int((datetime.datetime(int(row[1][0:4]), int(row[1][5:7]), int(row[1][8:10]), int(row[1][11: 13]), int(row[1][14: 16])) - datetime.datetime(2020,1,1,0,0)).total_seconds() / (SECS_IN_5MIN + 1)) # the unit of epoch_time is 5-minutes # the + 1 is a means to decrement the results
+                epoch_time= int((datetime.datetime(int(row[1][0:4]), int(row[1][5:7]), int(row[1][8:10]), int(row[1][11: 13]), int(row[1][14: 16])) - EPOCH).total_seconds() / SECS_IN_5MIN)
                 stations[int(row[0]) - 1].data_days[int(epoch_time / (DATAPOINTS_PER_DAY - 1))].populate(                     int((datetime.datetime(int(row[1][0:4]), int(row[1][5:7]), int(row[1][8:10]), int(row[1][11: 13]), int(row[1][14: 16])) - datetime.datetime(int(row[1][0:4]), int(row[1][5:7]), int(row[1][8:10]), 0, 0)).total_seconds() / (SECS_IN_5MIN + 1)),                     epoch_time,                     int(row[6]),                     float("{:.3f}".format(float(row[6]) / float(row[4]))))
             except IndexError as e:
                 print("\nTRIED: ", epoch_time, ' / ', DATAPOINTS_PER_DAY, ' = ', int(epoch_time / (DATAPOINTS_PER_DAY - 1)))
@@ -113,7 +115,7 @@ with open(FILENAME, newline='') as f:
         sys.exit('file {}, line {}: {}'.format(filename, reader.line_num, e))
 
 
-# In[ ]:
+# In[3]:
 
 
 # counter= 0
@@ -125,67 +127,63 @@ with open(FILENAME, newline='') as f:
 #         print(stations[s_i].data_days[row_i].day_of_week)
 
 
-# In[ ]:
+# In[4]:
 
 
 # Approach 01 - Data Prep
 
-time= int((datetime.datetime(2020, 1, 1, 6, 25) - datetime.datetime(2020, 1, 1, 0, 0)).total_seconds() / SECS_IN_5MIN)
-station_index_decrement= 1 # this is a varying offset for the indexing of stations that accounts for missing stations that are being ignored
-row_vol= MAX_TIME - time - START_TIME * TOTAL_DAYS
-fullness= np.full((row_vol, MAX_STATION_ID - len(MISSING_STATIONS)), DUD_VALUE, dtype=np.float)
-bikes_changes_past5= np.full((row_vol, MAX_STATION_ID - len(MISSING_STATIONS)), DUD_VALUE, dtype=np.int)
-bikes_changes_past15= np.full((row_vol, MAX_STATION_ID - len(MISSING_STATIONS)), DUD_VALUE, dtype=np.int)
-bikes_changes_past45= np.full((row_vol, MAX_STATION_ID - len(MISSING_STATIONS)), DUD_VALUE, dtype=np.int)
-day_of_week= np.full((row_vol, len(DAYS_OF_WEEK)), DUD_VALUE, dtype=np.int)
-hour_of_day= np.full((row_vol, OPEN_HOURS + 1), DUD_VALUE, dtype=np.float) # + 1 because we need the 0th/24th hour to be represented despite its exclusion
+fullness= np.full((MAX_TIME, MAX_STATION_ID - len(MISSING_STATIONS)), DUD_VALUE, dtype=np.int)
+fullness_percent= np.full((MAX_TIME, MAX_STATION_ID - len(MISSING_STATIONS)), DUD_VALUE, dtype=np.float)
+bikes_changes_past5= np.full((MAX_TIME, MAX_STATION_ID - len(MISSING_STATIONS)), DUD_VALUE, dtype=np.int)
+bikes_changes_past15= np.full((MAX_TIME, MAX_STATION_ID - len(MISSING_STATIONS)), DUD_VALUE, dtype=np.int)
+bikes_changes_past45= np.full((MAX_TIME, MAX_STATION_ID - len(MISSING_STATIONS)), DUD_VALUE, dtype=np.int)
+day_of_week= np.full((MAX_TIME, len(DAYS_OF_WEEK)), DUD_VALUE, dtype=np.int)
+hour_of_day= np.full((MAX_TIME, HOURS), DUD_VALUE, dtype=np.float)
 
-rejected_days= 0
+station_index_decrement= 1 # this is a varying offset for the indexing of stations that accounts for missing stations that are being ignored
 for epoch_day_i in range(TOTAL_DAYS):
-    print("########### epoch_day_i: ", epoch_day_i)
-    x= epoch_day_i * (DATAPOINTS_PER_DAY - START_TIME)
+    #print("########### epoch_day_i: ", epoch_day_i)
+    x= epoch_day_i * DATAPOINTS_PER_DAY
     y= 0
-    day= stations[2].data_days[epoch_day_i].day_of_week
     
-    block= np.zeros((DATAPOINTS_PER_DAY - START_TIME, OPEN_HOURS + 1), dtype=np.float)
-    daily_epoch_time= stations[2].data_days[epoch_day_i].daily_epoch_time[START_TIME:]
+    block= np.zeros((DATAPOINTS_PER_DAY, HOURS), dtype=np.float)
+    daily_epoch_time= list(range(DATAPOINTS_PER_DAY))
     for time_i in daily_epoch_time:
-        if time_i != DUD_VALUE:
-            hour= float("{:.3f}".format(time_i / 12))
-            hour-= START_TIME / DATAPOINTS_PER_HOUR
-            block[time_i - START_TIME][int(hour) + 1]= hour % 1
-            block[time_i - START_TIME][int(hour)]= 1 - (hour % 1)
+        hour= float("{:.3f}".format(time_i / 12))
+        block[time_i][(int(hour) + 1) % 24]= hour % 1
+        block[time_i][int(hour)]= 1 - (hour % 1)
     hour_of_day[x:x + block.shape[0], y:y + block.shape[1]]= block
     
-    block= np.zeros((DATAPOINTS_PER_DAY - START_TIME, len(DAYS_OF_WEEK)), dtype=np.int)
+    day= stations[2].data_days[epoch_day_i].day_of_week
+    block= np.zeros((DATAPOINTS_PER_DAY, len(DAYS_OF_WEEK)), dtype=np.int)
     for block_i, sub_arr in enumerate(block):
         block[block_i][day]= 1
     day_of_week[x:x + block.shape[0], y:y + block.shape[1]]= block
     
     for station in stations:
-        print("###### station.index: ", station.index)
+        #print("###### station.index: ", station.index)
         if station.index == 1:
             station_index_decrement= 1
         if station.index in MISSING_STATIONS:
-            #print("Rejected.")
             station_index_decrement+= 1
             continue
         y= station.index - station_index_decrement
         
-        block= station.data_days[epoch_day_i].percent_bikes[START_TIME:DATAPOINTS_PER_DAY]
-        block= np.reshape(block, (DATAPOINTS_PER_DAY - START_TIME, 1))
-        fullness[x:x + block.shape[0], y:y + block.shape[1]]= block
-        #if num in arr:
+        block= station.data_days[epoch_day_i].percent_bikes
+        block= np.reshape(block, (DATAPOINTS_PER_DAY, 1))
+        fullness_percent[x:x + block.shape[0], y:y + block.shape[1]]= block
         
-        block= station.data_days[epoch_day_i].bikes[START_TIME:DATAPOINTS_PER_DAY]
-        block_5minchange= np.zeros(DATAPOINTS_PER_DAY - START_TIME, dtype=np.int)
-        block_15minchange= np.zeros(DATAPOINTS_PER_DAY - START_TIME, dtype=np.int)
-        block_45minchange= np.zeros(DATAPOINTS_PER_DAY - START_TIME, dtype=np.int)
+        block= station.data_days[epoch_day_i].bikes
+        block= np.reshape(block, (DATAPOINTS_PER_DAY, 1))
+        fullness[x:x + block.shape[0], y:y + block.shape[1]]= block
+        
+        block= station.data_days[epoch_day_i].bikes
+        block_5minchange= np.zeros(DATAPOINTS_PER_DAY, dtype=np.int)
+        block_15minchange= np.zeros(DATAPOINTS_PER_DAY, dtype=np.int)
+        block_45minchange= np.zeros(DATAPOINTS_PER_DAY, dtype=np.int)
         for block_i in range(len(block)):
             five_ago= block[block_i]; fifteen_ago= block[block_i]; fourtyfive_ago= block[block_i];
-            accept= False
-            decrements= 10
-            for decrement in reversed(range(decrements)): # i.e. [9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
+            for decrement in reversed(range(DECREMENTS)): # i.e. [9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
                 try:
                     if block[block_i - min(1, decrement)] == DUD_VALUE or block[block_i - min(3, decrement)] == DUD_VALUE or block[block_i - min(9, decrement)] == DUD_VALUE:
                         continue
@@ -201,23 +199,24 @@ for epoch_day_i in range(TOTAL_DAYS):
             while current == DUD_VALUE and decrement < 10:
                 current= block[block_i - decrement]
                 decrement+= 1
-            #print("current: ", current)
             block_5minchange[block_i]= current - five_ago
             block_15minchange[block_i]= current - fifteen_ago
             block_45minchange[block_i]= current - fourtyfive_ago
-        block= np.reshape(block, (DATAPOINTS_PER_DAY - START_TIME, 1))
-        block_5minchange= np.reshape(block_5minchange, (DATAPOINTS_PER_DAY - START_TIME, 1))
-        block_15minchange= np.reshape(block_15minchange, (DATAPOINTS_PER_DAY - START_TIME, 1))
-        block_45minchange= np.reshape(block_45minchange, (DATAPOINTS_PER_DAY - START_TIME, 1))
+        block= np.reshape(block, (DATAPOINTS_PER_DAY, 1))
+        block_5minchange= np.reshape(block_5minchange, (DATAPOINTS_PER_DAY, 1))
+        block_15minchange= np.reshape(block_15minchange, (DATAPOINTS_PER_DAY, 1))
+        block_45minchange= np.reshape(block_45minchange, (DATAPOINTS_PER_DAY, 1))
         bikes_changes_past5[x:x + block.shape[0], y:y + block.shape[1]]= block_5minchange
         bikes_changes_past15[x:x + block.shape[0], y:y + block.shape[1]]= block_15minchange
         bikes_changes_past45[x:x + block.shape[0], y:y + block.shape[1]]= block_45minchange
+
+#indices_bad_data= 
 
 
 # In[ ]:
 
 
-print(fullness.shape)
+print(fullness_percent.shape)
 print(bikes_changes_past5.shape)
 print(bikes_changes_past15.shape)
 print(bikes_changes_past45.shape)
@@ -230,6 +229,7 @@ for row_i in range(limit):
     print("\n####################################")
     print(day_of_week[row_i])
     print(hour_of_day[row_i])
+    print(fullness_percent[row_i])
     print(fullness[row_i])
     print(bikes_changes_past5[row_i])
     print(bikes_changes_past15[row_i])

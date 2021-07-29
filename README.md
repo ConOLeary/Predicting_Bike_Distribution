@@ -1,5 +1,10 @@
 # Predicting_bike_distribution
 
+29 / 07 / 2021
+
+* Data from 27 / 1 / 2020 onwards is solid
+* hindsight is 20,20; data processing feeling more streamlined. just got to exclude gaps in data now
+
 28 / 07 / 2021
 
 * Start-edge bikes_changes_pastx issue looking better
