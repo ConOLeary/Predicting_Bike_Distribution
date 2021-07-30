@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[13]:
+# In[1]:
 
 
 import csv, sys
@@ -12,6 +12,7 @@ import numpy as np; np.set_printoptions(threshold=sys.maxsize)
 from sklearn.neural_network import MLPRegressor
 from sklearn.datasets import make_regression
 from sklearn.model_selection import train_test_split
+from sklearn.model_selection import KFold
 
 DUD_VALUE= 0
 TOTAL_ROWS= 2228278 # This number is greater than the total amount of rows circa epoch change to 27th, but it still works
@@ -28,6 +29,7 @@ HOURS= 24
 EPOCH= datetime.datetime(2020, 1, 27, 0, 0)
 MAX_TIME= int((datetime.datetime(2020,4,2,0,0) - EPOCH).total_seconds() / SECS_IN_5MIN)
 DECREMENTS= 10
+K= 5
 
 class DataDay: # ideally this would be nested in the Station class
     def __init__(self, index):
@@ -225,16 +227,16 @@ for epoch_day_i in range(TOTAL_DAYS):
 # In[5]:
 
 
-print(fullness_percent.shape)
-print(fullness_in10.shape)
-print(bikes_changes_past5.shape)
-print(bikes_changes_past15.shape)
-print(bikes_changes_past45.shape)
-print(day_of_week.shape)
-print(hour_of_day.shape)
+# print(fullness_percent.shape)
+# print(fullness_in10.shape)
+# print(bikes_changes_past5.shape)
+# print(bikes_changes_past15.shape)
+# print(bikes_changes_past45.shape)
+# print(day_of_week.shape)
+# print(hour_of_day.shape)
 
-counter= 0
-limit= 22051
+# counter= 0
+# limit= 22051
 #for row_i in range(limit):
 #     print("\n####################################")
 #     print(day_of_week[row_i])
@@ -251,7 +253,7 @@ limit= 22051
 #     print("####################################")
 
 
-# In[16]:
+# In[6]:
 
 
 X= np.full((MAX_TIME, hour_of_day.shape[1] + day_of_week.shape[1] + bikes_changes_past5.shape[1] * 4), 0, dtype=np.int)
@@ -270,9 +272,28 @@ X[0:MAX_TIME, 139:247]= fullness_in10
 X[0:MAX_TIME, 247:355]= fullness_in30
 X[0:MAX_TIME, 355:463]= fullness_in60
 
-X_train, X_test, y_train, y_test= train_test_split(X, y, random_state=1)
-regr = MLPRegressor(random_state=1, max_iter=500).fit(X_train, y_train)
-regr.predict(X_test)
+# X_train, X_test, y_train, y_test= train_test_split(X, y, random_state=1)
+# regr = MLPRegressor(random_state=1, max_iter=500).fit(X_train, y_train)
+# y_pred= regr.predict(X_test)
 
-print(regr.score(X_test, y_test))
+# print(regr.score(X_test, y_test))
+
+
+# In[8]:
+
+
+kf= KFold(n_splits= K)
+kf.get_n_splits(X)
+score_sum= 0.0
+i= 1
+for train_index, test_index in kf.split(X):
+    X_train, X_test= X[train_index], X[test_index]
+    y_train, y_test= y[train_index], y[test_index]
+    regr= MLPRegressor(random_state= 1, max_iter= 500).fit(X_train, y_train)
+    y_pred= regr.predict(X_test)
+    score_sum+= regr.score(X_test, y_test)
+    print("Data split ", i, " accuracy: ", regr.score(X_test, y_test) * 100, " %")
+    i+= 1
+
+print("\nAverage accuracy of model: ", (score_sum / K) * 100, " %")
 
