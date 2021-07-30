@@ -1,5 +1,10 @@
 # Predicting_bike_distribution
 
+
+30 / 07 / 2021
+
+~= 0.99938 accuracy 😳 Something must be wrong
+
 29 / 07 / 2021
 
 * Data from 27 / 1 / 2020 onwards is solid

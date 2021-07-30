@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[13]:
 
 
 import csv, sys
@@ -9,8 +9,11 @@ import datetime
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import numpy as np; np.set_printoptions(threshold=sys.maxsize)
+from sklearn.neural_network import MLPRegressor
+from sklearn.datasets import make_regression
+from sklearn.model_selection import train_test_split
 
-DUD_VALUE= 123
+DUD_VALUE= 0
 TOTAL_ROWS= 2228278 # This number is greater than the total amount of rows circa epoch change to 27th, but it still works
 INPUT_ROWS_LIMIT= TOTAL_ROWS
 FILENAME= 'dublinbikes_2020_Q1.csv'
@@ -71,7 +74,7 @@ def get_station_id(name):
     return index
 
 
-# In[ ]:
+# In[2]:
 
 
 total_capacity= 0 # not in use currently
@@ -112,7 +115,7 @@ with open(FILENAME, newline='') as f:
         sys.exit('file {}, line {}: {}'.format(filename, reader.line_num, e))
 
 
-# In[ ]:
+# In[3]:
 
 
 # counter= 0
@@ -124,7 +127,7 @@ with open(FILENAME, newline='') as f:
 #         print(stations[s_i].data_days[row_i].day_of_week)
 
 
-# In[ ]:
+# In[4]:
 
 
 # Approach 01 - Data Prep
@@ -143,8 +146,8 @@ hour_of_day= np.full((MAX_TIME, HOURS), 0, dtype=np.float)
 station_index_decrement= 1 # this is a varying offset for the indexing of stations that accounts for missing stations that are being ignored
 for epoch_day_i in range(TOTAL_DAYS):
     #print("########### epoch_day_i: ", epoch_day_i)
-    x= epoch_day_i * DATAPOINTS_PER_DAY
-    y= 0
+    x_offset= epoch_day_i * DATAPOINTS_PER_DAY
+    y_offset= 0
     
     block= np.zeros((DATAPOINTS_PER_DAY, HOURS), dtype=np.float)
     daily_epoch_time= list(range(DATAPOINTS_PER_DAY))
@@ -152,13 +155,13 @@ for epoch_day_i in range(TOTAL_DAYS):
         hour= float("{:.3f}".format(time_i / 12))
         block[time_i][(int(hour) + 1) % 24]= hour % 1
         block[time_i][int(hour)]= 1 - (hour % 1)
-    hour_of_day[x:x + block.shape[0], y:y + block.shape[1]]= block
+    hour_of_day[x_offset:x_offset + block.shape[0], y_offset:y_offset + block.shape[1]]= block
     
     day= stations[2].data_days[epoch_day_i].day_of_week
     block= np.zeros((DATAPOINTS_PER_DAY, len(DAYS_OF_WEEK)), dtype=np.int)
     for block_i, sub_arr in enumerate(block):
         block[block_i][day]= 1
-    day_of_week[x:x + block.shape[0], y:y + block.shape[1]]= block
+    day_of_week[x_offset:x_offset + block.shape[0], y_offset:y_offset + block.shape[1]]= block
     
     for station in stations:
         #print("###### station.index: ", station.index)
@@ -167,23 +170,23 @@ for epoch_day_i in range(TOTAL_DAYS):
         if station.index in MISSING_STATIONS:
             station_index_decrement+= 1
             continue
-        y= station.index - station_index_decrement
+        y_offset= station.index - station_index_decrement
         
         block= station.data_days[epoch_day_i].percent_bikes
         block= np.reshape(block, (DATAPOINTS_PER_DAY, 1))
-        fullness_percent[x:x + block.shape[0], y:y + block.shape[1]]= block
+        fullness_percent[x_offset:x_offset + block.shape[0], y_offset:y_offset + block.shape[1]]= block
         
         block= station.data_days[epoch_day_i].bikes
         block= np.reshape(block, (DATAPOINTS_PER_DAY, 1))
-        fullness[x:x + block.shape[0], y:y + block.shape[1]]= block
+        fullness[x_offset:x_offset + block.shape[0], y_offset:y_offset + block.shape[1]]= block
         
         bikes= station.data_days[epoch_day_i].bikes
         block= np.reshape(bikes[2:], (bikes.shape[0] - 2, 1))
-        fullness_in10[x:x + block.shape[0], y:y + block.shape[1]]= block
+        fullness_in10[x_offset:x_offset + block.shape[0], y_offset:y_offset + block.shape[1]]= block
         block= np.reshape(bikes[6:], (bikes.shape[0] - 6, 1))
-        fullness_in30[x:x + block.shape[0], y:y + block.shape[1]]= block
+        fullness_in30[x_offset:x_offset + block.shape[0], y_offset:y_offset + block.shape[1]]= block
         block= np.reshape(bikes[12:], (bikes.shape[0] - 12, 1))
-        fullness_in60[x:x + block.shape[0], y:y + block.shape[1]]= block
+        fullness_in60[x_offset:x_offset + block.shape[0], y_offset:y_offset + block.shape[1]]= block
         
         block= station.data_days[epoch_day_i].bikes
         block_5minchange= np.zeros(DATAPOINTS_PER_DAY, dtype=np.int)
@@ -214,18 +217,16 @@ for epoch_day_i in range(TOTAL_DAYS):
         block_5minchange= np.reshape(block_5minchange, (DATAPOINTS_PER_DAY, 1))
         block_15minchange= np.reshape(block_15minchange, (DATAPOINTS_PER_DAY, 1))
         block_45minchange= np.reshape(block_45minchange, (DATAPOINTS_PER_DAY, 1))
-        bikes_changes_past5[x:x + block.shape[0], y:y + block.shape[1]]= block_5minchange
-        bikes_changes_past15[x:x + block.shape[0], y:y + block.shape[1]]= block_15minchange
-        bikes_changes_past45[x:x + block.shape[0], y:y + block.shape[1]]= block_45minchange
-
-X= np.full((MAX_TIME, fullness_percent.shape[1] + hour_of_day.shape[1] + day_of_week.shape[1] + bikes_changes_past5.shape[1] * 3), 0, dtype=np.int)
-#y= np.full((MAX_TIME, ), 0, dtype=np.int)
+        bikes_changes_past5[x_offset:x_offset + block.shape[0], y_offset:y_offset + block.shape[1]]= block_5minchange
+        bikes_changes_past15[x_offset:x_offset + block.shape[0], y_offset:y_offset + block.shape[1]]= block_15minchange
+        bikes_changes_past45[x_offset:x_offset + block.shape[0], y_offset:y_offset + block.shape[1]]= block_45minchange
 
 
-# In[ ]:
+# In[5]:
 
 
 print(fullness_percent.shape)
+print(fullness_in10.shape)
 print(bikes_changes_past5.shape)
 print(bikes_changes_past15.shape)
 print(bikes_changes_past45.shape)
@@ -234,39 +235,44 @@ print(hour_of_day.shape)
 
 counter= 0
 limit= 22051
-for row_i in range(limit):
-    print("\n####################################")
+#for row_i in range(limit):
+#     print("\n####################################")
 #     print(day_of_week[row_i])
 #     print(hour_of_day[row_i])
 #     print(fullness_percent[row_i])
-    print(fullness[row_i])
-    print("---")
-    print(fullness_in10[row_i])
-    print(fullness_in30[row_i])
-    print(fullness_in60[row_i])
+#     print(fullness[row_i])
+#     print("---")
+#     print(fullness_in10[row_i])
+#     print(fullness_in30[row_i])
+#     print(fullness_in60[row_i])
 #     print(bikes_changes_past5[row_i])
 #     print(bikes_changes_past15[row_i])
 #     print(bikes_changes_past45[row_i])
-    print("####################################")
+#     print("####################################")
 
 
-# In[ ]:
+# In[16]:
 
 
-#X= fullness_percent, hour_of_day, day_of_week, bikes_changes_past5, bikes_changes_past15, bikes_changes_past45
-#y= fullness in 10 min, 30 min, and 1 hour for 2 stations
+X= np.full((MAX_TIME, hour_of_day.shape[1] + day_of_week.shape[1] + bikes_changes_past5.shape[1] * 4), 0, dtype=np.int)
+y= np.full((MAX_TIME, 6), 0, dtype=np.int)
 
-#X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=1)
-#regr = MLPRegressor(random_state=1, max_iter=500).fit(X_train, y_train)
-#regr.predict(X_test)
+y[0:MAX_TIME, 0:1]= np.reshape(fullness_in10[:,get_station_id("PORTOBELLO ROAD")], (MAX_TIME, 1))
+y[0:MAX_TIME, 1:2]= np.reshape(fullness_in10[:,get_station_id("CUSTOM HOUSE QUAY")], (MAX_TIME, 1))
+y[0:MAX_TIME, 2:3]= np.reshape(fullness_in30[:,get_station_id("PORTOBELLO ROAD")], (MAX_TIME, 1))
+y[0:MAX_TIME, 3:4]= np.reshape(fullness_in30[:,get_station_id("CUSTOM HOUSE QUAY")], (MAX_TIME, 1))
+y[0:MAX_TIME, 4:5]= np.reshape(fullness_in60[:,get_station_id("PORTOBELLO ROAD")], (MAX_TIME, 1))
+y[0:MAX_TIME, 5:6]= np.reshape(fullness_in60[:,get_station_id("CUSTOM HOUSE QUAY")], (MAX_TIME, 1))
+X[0:MAX_TIME, 0:7]= day_of_week
+X[0:MAX_TIME, 7:31]= hour_of_day
+X[0:MAX_TIME, 31:139]= fullness_percent
+X[0:MAX_TIME, 139:247]= fullness_in10
+X[0:MAX_TIME, 247:355]= fullness_in30
+X[0:MAX_TIME, 355:463]= fullness_in60
 
-#print(regr.score(X_test, y_test))
+X_train, X_test, y_train, y_test= train_test_split(X, y, random_state=1)
+regr = MLPRegressor(random_state=1, max_iter=500).fit(X_train, y_train)
+regr.predict(X_test)
 
-
-# In[ ]:
-
-
-y= np.array([1, 2, 3, 4, 5])
-print(y)
-print(y[1:])
+print(regr.score(X_test, y_test))
 
