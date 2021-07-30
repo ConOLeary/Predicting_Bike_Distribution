@@ -129,9 +129,10 @@ with open(FILENAME, newline='') as f:
 
 # Approach 01 - Data Prep
 
-bad_data_indices= []
-
 fullness= np.full((MAX_TIME, MAX_STATION_ID - len(MISSING_STATIONS)), 0, dtype=np.int)
+fullness_in10= np.full((MAX_TIME, MAX_STATION_ID - len(MISSING_STATIONS)), 0, dtype=np.int)
+fullness_in30= np.full((MAX_TIME, MAX_STATION_ID - len(MISSING_STATIONS)), 0, dtype=np.int)
+fullness_in60= np.full((MAX_TIME, MAX_STATION_ID - len(MISSING_STATIONS)), 0, dtype=np.int)
 fullness_percent= np.full((MAX_TIME, MAX_STATION_ID - len(MISSING_STATIONS)), 0, dtype=np.float)
 bikes_changes_past5= np.full((MAX_TIME, MAX_STATION_ID - len(MISSING_STATIONS)), 0, dtype=np.int)
 bikes_changes_past15= np.full((MAX_TIME, MAX_STATION_ID - len(MISSING_STATIONS)), 0, dtype=np.int)
@@ -168,7 +169,6 @@ for epoch_day_i in range(TOTAL_DAYS):
             continue
         y= station.index - station_index_decrement
         
-        
         block= station.data_days[epoch_day_i].percent_bikes
         block= np.reshape(block, (DATAPOINTS_PER_DAY, 1))
         fullness_percent[x:x + block.shape[0], y:y + block.shape[1]]= block
@@ -176,6 +176,14 @@ for epoch_day_i in range(TOTAL_DAYS):
         block= station.data_days[epoch_day_i].bikes
         block= np.reshape(block, (DATAPOINTS_PER_DAY, 1))
         fullness[x:x + block.shape[0], y:y + block.shape[1]]= block
+        
+        bikes= station.data_days[epoch_day_i].bikes
+        block= np.reshape(bikes[2:], (bikes.shape[0] - 2, 1))
+        fullness_in10[x:x + block.shape[0], y:y + block.shape[1]]= block
+        block= np.reshape(bikes[6:], (bikes.shape[0] - 6, 1))
+        fullness_in30[x:x + block.shape[0], y:y + block.shape[1]]= block
+        block= np.reshape(bikes[12:], (bikes.shape[0] - 12, 1))
+        fullness_in60[x:x + block.shape[0], y:y + block.shape[1]]= block
         
         block= station.data_days[epoch_day_i].bikes
         block_5minchange= np.zeros(DATAPOINTS_PER_DAY, dtype=np.int)
@@ -210,29 +218,36 @@ for epoch_day_i in range(TOTAL_DAYS):
         bikes_changes_past15[x:x + block.shape[0], y:y + block.shape[1]]= block_15minchange
         bikes_changes_past45[x:x + block.shape[0], y:y + block.shape[1]]= block_45minchange
 
+X= np.full((MAX_TIME, fullness_percent.shape[1] + hour_of_day.shape[1] + day_of_week.shape[1] + bikes_changes_past5.shape[1] * 3), 0, dtype=np.int)
+#y= np.full((MAX_TIME, ), 0, dtype=np.int)
+
 
 # In[ ]:
 
 
-# print(fullness_percent.shape)
-# print(bikes_changes_past5.shape)
-# print(bikes_changes_past15.shape)
-# print(bikes_changes_past45.shape)
-# print(day_of_week.shape)
-# print(hour_of_day.shape)
+print(fullness_percent.shape)
+print(bikes_changes_past5.shape)
+print(bikes_changes_past15.shape)
+print(bikes_changes_past45.shape)
+print(day_of_week.shape)
+print(hour_of_day.shape)
 
-# counter= 0
-# limit= 22051
-# for row_i in range(limit):
-#     print("\n####################################")
+counter= 0
+limit= 22051
+for row_i in range(limit):
+    print("\n####################################")
 #     print(day_of_week[row_i])
 #     print(hour_of_day[row_i])
 #     print(fullness_percent[row_i])
-#     print(fullness[row_i])
+    print(fullness[row_i])
+    print("---")
+    print(fullness_in10[row_i])
+    print(fullness_in30[row_i])
+    print(fullness_in60[row_i])
 #     print(bikes_changes_past5[row_i])
 #     print(bikes_changes_past15[row_i])
 #     print(bikes_changes_past45[row_i])
-#     print("####################################")
+    print("####################################")
 
 
 # In[ ]:
@@ -246,4 +261,12 @@ for epoch_day_i in range(TOTAL_DAYS):
 #regr.predict(X_test)
 
 #print(regr.score(X_test, y_test))
+
+
+# In[ ]:
+
+
+y= np.array([1, 2, 3, 4, 5])
+print(y)
+print(y[1:])
 
