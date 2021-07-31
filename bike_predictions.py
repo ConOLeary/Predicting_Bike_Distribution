@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[13]:
+# In[10]:
 
 
 import csv, sys
@@ -12,6 +12,8 @@ import numpy as np; np.set_printoptions(threshold=sys.maxsize)
 from sklearn.neural_network import MLPRegressor
 from sklearn.datasets import make_regression
 from sklearn.model_selection import train_test_split
+from sklearn.model_selection import KFold
+from sklearn.neighbors import KNeighborsRegressor
 
 DUD_VALUE= 0
 TOTAL_ROWS= 2228278 # This number is greater than the total amount of rows circa epoch change to 27th, but it still works
@@ -28,6 +30,7 @@ HOURS= 24
 EPOCH= datetime.datetime(2020, 1, 27, 0, 0)
 MAX_TIME= int((datetime.datetime(2020,4,2,0,0) - EPOCH).total_seconds() / SECS_IN_5MIN)
 DECREMENTS= 10
+K= 5
 
 class DataDay: # ideally this would be nested in the Station class
     def __init__(self, index):
@@ -115,22 +118,8 @@ with open(FILENAME, newline='') as f:
         sys.exit('file {}, line {}: {}'.format(filename, reader.line_num, e))
 
 
-# In[3]:
-
-
-# counter= 0
-# limit= 50
-# for row_i in range(limit):
-#     print("################# row_i: ",row_i)
-#     for s_i, station in enumerate(stations):
-        
-#         print(stations[s_i].data_days[row_i].day_of_week)
-
-
 # In[4]:
 
-
-# Approach 01 - Data Prep
 
 fullness= np.full((MAX_TIME, MAX_STATION_ID - len(MISSING_STATIONS)), 0, dtype=np.int)
 fullness_in10= np.full((MAX_TIME, MAX_STATION_ID - len(MISSING_STATIONS)), 0, dtype=np.int)
@@ -225,16 +214,16 @@ for epoch_day_i in range(TOTAL_DAYS):
 # In[5]:
 
 
-print(fullness_percent.shape)
-print(fullness_in10.shape)
-print(bikes_changes_past5.shape)
-print(bikes_changes_past15.shape)
-print(bikes_changes_past45.shape)
-print(day_of_week.shape)
-print(hour_of_day.shape)
+# print(fullness_percent.shape)
+# print(fullness_in10.shape)
+# print(bikes_changes_past5.shape)
+# print(bikes_changes_past15.shape)
+# print(bikes_changes_past45.shape)
+# print(day_of_week.shape)
+# print(hour_of_day.shape)
 
-counter= 0
-limit= 22051
+# counter= 0
+# limit= 22051
 #for row_i in range(limit):
 #     print("\n####################################")
 #     print(day_of_week[row_i])
@@ -251,18 +240,18 @@ limit= 22051
 #     print("####################################")
 
 
-# In[16]:
+# In[8]:
 
 
-X= np.full((MAX_TIME, hour_of_day.shape[1] + day_of_week.shape[1] + bikes_changes_past5.shape[1] * 4), 0, dtype=np.int)
 y= np.full((MAX_TIME, 6), 0, dtype=np.int)
-
 y[0:MAX_TIME, 0:1]= np.reshape(fullness_in10[:,get_station_id("PORTOBELLO ROAD")], (MAX_TIME, 1))
 y[0:MAX_TIME, 1:2]= np.reshape(fullness_in10[:,get_station_id("CUSTOM HOUSE QUAY")], (MAX_TIME, 1))
 y[0:MAX_TIME, 2:3]= np.reshape(fullness_in30[:,get_station_id("PORTOBELLO ROAD")], (MAX_TIME, 1))
 y[0:MAX_TIME, 3:4]= np.reshape(fullness_in30[:,get_station_id("CUSTOM HOUSE QUAY")], (MAX_TIME, 1))
 y[0:MAX_TIME, 4:5]= np.reshape(fullness_in60[:,get_station_id("PORTOBELLO ROAD")], (MAX_TIME, 1))
 y[0:MAX_TIME, 5:6]= np.reshape(fullness_in60[:,get_station_id("CUSTOM HOUSE QUAY")], (MAX_TIME, 1))
+
+X= np.full((MAX_TIME, hour_of_day.shape[1] + day_of_week.shape[1] + bikes_changes_past5.shape[1] * 4), 0, dtype=np.int)
 X[0:MAX_TIME, 0:7]= day_of_week
 X[0:MAX_TIME, 7:31]= hour_of_day
 X[0:MAX_TIME, 31:139]= fullness_percent
@@ -270,9 +259,55 @@ X[0:MAX_TIME, 139:247]= fullness_in10
 X[0:MAX_TIME, 247:355]= fullness_in30
 X[0:MAX_TIME, 355:463]= fullness_in60
 
-X_train, X_test, y_train, y_test= train_test_split(X, y, random_state=1)
-regr = MLPRegressor(random_state=1, max_iter=500).fit(X_train, y_train)
-regr.predict(X_test)
+kf= KFold(n_splits= K)
+kf.get_n_splits(X)
+score_sum= 0.0
+i= 1
+for train_index, test_index in kf.split(X):
+    X_train, X_test= X[train_index], X[test_index]
+    y_train, y_test= y[train_index], y[test_index]
+    regr= MLPRegressor(random_state= 1, max_iter= 500).fit(X_train, y_train)
+    y_pred= regr.predict(X_test)
+    score_sum+= regr.score(X_test, y_test)
+    print("Data split ", i, " accuracy: ", regr.score(X_test, y_test) * 100, " %")
+    i+= 1
 
-print(regr.score(X_test, y_test))
+print("\nAverage accuracy of model: ", (score_sum / K) * 100, " %")
+
+
+# In[50]:
+
+
+# Test KNReg
+
+X= [[10], [10], [10], [10]] # day time
+y= [[0, 0], [0, 0], [1, 1], [1, 1]]
+
+neigh= KNeighborsRegressor(n_neighbors= 4, weights='uniform').fit(X, y)
+
+print(neigh.predict([[10]]))
+
+
+# In[46]:
+
+
+dates_per_day= np.zeros((2, len(DAYS_OF_WEEK)), dtype=np.int)
+
+station1= stations[get_station_id("PORTOBELLO ROAD")]
+station2= stations[get_station_id("CUSTOM HOUSE QUAY")]
+
+for data_day in station1.data_days:
+    dates_per_day[0, data_day.day_of_week]+= 1
+for data_day in station2.data_days:
+    dates_per_day[1, data_day.day_of_week]+= 1
+min_dates_per_day= np.amin(amounts_of_weekdays)
+
+X= np.full((DATAPOINTS_PER_DAY, len(DAYS_OF_WEEK) * min_dates_per_day * 2), 0, dtype=np.int)
+print(X.shape)
+
+
+# In[ ]:
+
+
+
 

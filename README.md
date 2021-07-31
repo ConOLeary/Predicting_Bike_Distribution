@@ -1,9 +1,14 @@
 # Predicting_bike_distribution
 
 
+31 / 07 / 2021
+
+* 1st model seems solid. Going to try a KNRegressor for the 2nd. Neighbours for a given time to predict will be the bike_fullness of that same station at that same prediction time at previous dates when the day_of_week was the same. Closer (and greater weighted) neighbours will be those where the bike_occupancy of the given station is more similar at the current time.
+* Yep, so there is more to a knn when x and y aren't 1 dimensional. Trying to mentally conceive how a nearest neighbour is calculated when there are multiple features in X.
+
 30 / 07 / 2021
 
-~= 0.99938 accuracy 😳 Something must be wrong
+* ~= 0.99938 accuracy 😳 Something must be wrong
 
 29 / 07 / 2021
 
