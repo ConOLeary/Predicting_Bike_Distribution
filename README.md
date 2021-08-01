@@ -1,5 +1,9 @@
 # Predicting_bike_distribution
 
+01 / 08 / 2021
+
+* Retrospectively, avoiding pandas probably made my life harder
+* Big brain moment: going to represent the time of day as an x and y value, where a 24hr day is a circle. This way 15:00 and 16:00 are as similar to each other as 23:00 and 00:00
 
 31 / 07 / 2021
 

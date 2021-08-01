@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[10]:
+# In[126]:
 
 
 import csv, sys
@@ -14,6 +14,7 @@ from sklearn.datasets import make_regression
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import KFold
 from sklearn.neighbors import KNeighborsRegressor
+import math
 
 DUD_VALUE= 0
 TOTAL_ROWS= 2228278 # This number is greater than the total amount of rows circa epoch change to 27th, but it still works
@@ -31,6 +32,8 @@ EPOCH= datetime.datetime(2020, 1, 27, 0, 0)
 MAX_TIME= int((datetime.datetime(2020,4,2,0,0) - EPOCH).total_seconds() / SECS_IN_5MIN)
 DECREMENTS= 10
 K= 5
+STEP_SIZE= 0.02185 # just the magic number that leads to 288 values being generated
+R= 0.5
 
 class DataDay: # ideally this would be nested in the Station class
     def __init__(self, index):
@@ -240,7 +243,7 @@ for epoch_day_i in range(TOTAL_DAYS):
 #     print("####################################")
 
 
-# In[8]:
+# In[91]:
 
 
 y= np.full((MAX_TIME, 6), 0, dtype=np.int)
@@ -250,6 +253,10 @@ y[0:MAX_TIME, 2:3]= np.reshape(fullness_in30[:,get_station_id("PORTOBELLO ROAD")
 y[0:MAX_TIME, 3:4]= np.reshape(fullness_in30[:,get_station_id("CUSTOM HOUSE QUAY")], (MAX_TIME, 1))
 y[0:MAX_TIME, 4:5]= np.reshape(fullness_in60[:,get_station_id("PORTOBELLO ROAD")], (MAX_TIME, 1))
 y[0:MAX_TIME, 5:6]= np.reshape(fullness_in60[:,get_station_id("CUSTOM HOUSE QUAY")], (MAX_TIME, 1))
+
+
+# In[8]:
+
 
 X= np.full((MAX_TIME, hour_of_day.shape[1] + day_of_week.shape[1] + bikes_changes_past5.shape[1] * 4), 0, dtype=np.int)
 X[0:MAX_TIME, 0:7]= day_of_week
@@ -275,17 +282,28 @@ for train_index, test_index in kf.split(X):
 print("\nAverage accuracy of model: ", (score_sum / K) * 100, " %")
 
 
-# In[50]:
+# In[127]:
+
+
+positions= []
+
+t= 0
+while t < 2 * math.pi:
+    positions.append((1 - (R * math.cos(t) + R), R * math.sin(t) + R))
+    t+= STEP_SIZE
+
+
+# In[129]:
 
 
 # Test KNReg
 
-X= [[10], [10], [10], [10]] # day time
-y= [[0, 0], [0, 0], [1, 1], [1, 1]]
+X= [[75, 25, 1, 1], [50, 25, 1, 1], [25, 25, 1, 1], [75, 75, 1, 1], [50, 75, 1, 1], [25, 75, 1, 1]] # day time
+y= [[1, 2], [1, 2], [1, 2], [2, 1], [2, 1], [2, 1]]
 
-neigh= KNeighborsRegressor(n_neighbors= 4, weights='uniform').fit(X, y)
+neigh= KNeighborsRegressor(n_neighbors= 3, weights='uniform').fit(X, y)
 
-print(neigh.predict([[10]]))
+print(neigh.predict([[50, 80, 1, 1]]))
 
 
 # In[46]:
@@ -303,11 +321,4 @@ for data_day in station2.data_days:
 min_dates_per_day= np.amin(amounts_of_weekdays)
 
 X= np.full((DATAPOINTS_PER_DAY, len(DAYS_OF_WEEK) * min_dates_per_day * 2), 0, dtype=np.int)
-print(X.shape)
-
-
-# In[ ]:
-
-
-
 
