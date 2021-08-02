@@ -1,5 +1,19 @@
 # Predicting_bike_distribution
 
+02 / 08 / 2021
+
+* reason accuracy was so high is because of the following:
+
+X[0:MAX_TIME, 139:247]= fullness_in10
+X[0:MAX_TIME, 247:355]= fullness_in30
+X[0:MAX_TIME, 355:463]= fullness_in60
+
+which should have been
+
+X[0:MAX_TIME, 139:247]= bikes_changes_past5
+X[0:MAX_TIME, 247:355]= bikes_changes_past15
+X[0:MAX_TIME, 355:463]= bikes_changes_past45
+
 01 / 08 / 2021
 
 * Retrospectively, avoiding pandas probably made my life harder

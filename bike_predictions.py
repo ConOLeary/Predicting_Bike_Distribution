@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[126]:
+# In[1]:
 
 
 import csv, sys
@@ -121,7 +121,7 @@ with open(FILENAME, newline='') as f:
         sys.exit('file {}, line {}: {}'.format(filename, reader.line_num, e))
 
 
-# In[4]:
+# In[3]:
 
 
 fullness= np.full((MAX_TIME, MAX_STATION_ID - len(MISSING_STATIONS)), 0, dtype=np.int)
@@ -214,7 +214,7 @@ for epoch_day_i in range(TOTAL_DAYS):
         bikes_changes_past45[x_offset:x_offset + block.shape[0], y_offset:y_offset + block.shape[1]]= block_45minchange
 
 
-# In[5]:
+# In[4]:
 
 
 # print(fullness_percent.shape)
@@ -243,7 +243,7 @@ for epoch_day_i in range(TOTAL_DAYS):
 #     print("####################################")
 
 
-# In[91]:
+# In[5]:
 
 
 y= np.full((MAX_TIME, 6), 0, dtype=np.int)
@@ -255,16 +255,16 @@ y[0:MAX_TIME, 4:5]= np.reshape(fullness_in60[:,get_station_id("PORTOBELLO ROAD")
 y[0:MAX_TIME, 5:6]= np.reshape(fullness_in60[:,get_station_id("CUSTOM HOUSE QUAY")], (MAX_TIME, 1))
 
 
-# In[8]:
+# In[6]:
 
 
 X= np.full((MAX_TIME, hour_of_day.shape[1] + day_of_week.shape[1] + bikes_changes_past5.shape[1] * 4), 0, dtype=np.int)
 X[0:MAX_TIME, 0:7]= day_of_week
 X[0:MAX_TIME, 7:31]= hour_of_day
 X[0:MAX_TIME, 31:139]= fullness_percent
-X[0:MAX_TIME, 139:247]= fullness_in10
-X[0:MAX_TIME, 247:355]= fullness_in30
-X[0:MAX_TIME, 355:463]= fullness_in60
+X[0:MAX_TIME, 139:247]= bikes_changes_past5
+X[0:MAX_TIME, 247:355]= bikes_changes_past15
+X[0:MAX_TIME, 355:463]= bikes_changes_past45
 
 kf= KFold(n_splits= K)
 kf.get_n_splits(X)
@@ -282,8 +282,10 @@ for train_index, test_index in kf.split(X):
 print("\nAverage accuracy of model: ", (score_sum / K) * 100, " %")
 
 
-# In[127]:
+# In[28]:
 
+
+X= np.full((MAX_TIME, 6), -1, dtype=np.float)
 
 positions= []
 
@@ -292,33 +294,47 @@ while t < 2 * math.pi:
     positions.append((1 - (R * math.cos(t) + R), R * math.sin(t) + R))
     t+= STEP_SIZE
 
+pos_i= 0
+for time_i in range(MAX_TIME):
+    X[time_i, 0]= positions[pos_i][0]
+    X[time_i, 1]= positions[pos_i][1]
+    pos_i= (pos_i + 1) % len(positions)
 
-# In[129]:
+index= get_station_id("PORTOBELLO ROAD")
+X[0:MAX_TIME, 2:3]= bikes_changes_past5[0:MAX_TIME, index:index + 1]
+X[0:MAX_TIME, 3:4]= bikes_changes_past15[0:MAX_TIME, index:index + 1]
+X[0:MAX_TIME, 4:5]= bikes_changes_past45[0:MAX_TIME, index:index + 1]
+X[0:MAX_TIME, 5:6]= fullness_percent[0:MAX_TIME, index:index + 1]
 
-
-# Test KNReg
-
-X= [[75, 25, 1, 1], [50, 25, 1, 1], [25, 25, 1, 1], [75, 75, 1, 1], [50, 75, 1, 1], [25, 75, 1, 1]] # day time
-y= [[1, 2], [1, 2], [1, 2], [2, 1], [2, 1], [2, 1]]
-
-neigh= KNeighborsRegressor(n_neighbors= 3, weights='uniform').fit(X, y)
-
-print(neigh.predict([[50, 80, 1, 1]]))
-
-
-# In[46]:
+#print(X)
 
 
-dates_per_day= np.zeros((2, len(DAYS_OF_WEEK)), dtype=np.int)
+# In[8]:
 
-station1= stations[get_station_id("PORTOBELLO ROAD")]
-station2= stations[get_station_id("CUSTOM HOUSE QUAY")]
 
-for data_day in station1.data_days:
-    dates_per_day[0, data_day.day_of_week]+= 1
-for data_day in station2.data_days:
-    dates_per_day[1, data_day.day_of_week]+= 1
-min_dates_per_day= np.amin(amounts_of_weekdays)
+# # Test KNReg
 
-X= np.full((DATAPOINTS_PER_DAY, len(DAYS_OF_WEEK) * min_dates_per_day * 2), 0, dtype=np.int)
+# X= [[75, 25, 1, 1], [50, 25, 1, 1], [25, 25, 1, 1], [75, 75, 1, 1], [50, 75, 1, 1], [25, 75, 1, 1]] # day time
+# y= [[1, 2], [1, 2], [1, 2], [2, 1], [2, 1], [2, 1]]
+
+# neigh= KNeighborsRegressor(n_neighbors= 3, weights='uniform').fit(X, y)
+
+# print(neigh.predict([[50, 80, 1, 1]]))
+
+
+# In[9]:
+
+
+# dates_per_day= np.zeros((2, len(DAYS_OF_WEEK)), dtype=np.int)
+
+# station1= stations[get_station_id("PORTOBELLO ROAD")]
+# station2= stations[get_station_id("CUSTOM HOUSE QUAY")]
+
+# for data_day in station1.data_days:
+#     dates_per_day[0, data_day.day_of_week]+= 1
+# for data_day in station2.data_days:
+#     dates_per_day[1, data_day.day_of_week]+= 1
+# min_dates_per_day= np.amin(amounts_of_weekdays)
+
+# X= np.full((DATAPOINTS_PER_DAY, len(DAYS_OF_WEEK) * min_dates_per_day * 2), 0, dtype=np.int)
 
