@@ -244,7 +244,7 @@ for epoch_day_i in range(TOTAL_DAYS):
 #     print("####################################")
 
 
-# In[57]:
+# In[68]:
 
 
 index= get_station_id("PORTOBELLO ROAD")
@@ -257,7 +257,7 @@ y[0:MAX_TIME, 1:2]= np.reshape(fullness_in30[:,index], (MAX_TIME, 1))
 y[0:MAX_TIME, 2:3]= np.reshape(fullness_in60[:,index], (MAX_TIME, 1))
 #y[0:MAX_TIME, 5:6]= np.reshape(fullness_in60[:,get_station_id("CUSTOM HOUSE QUAY")], (MAX_TIME, 1))
 
-X= np.full((MAX_TIME, hour_of_day.shape[1] + day_of_week.shape[1] + 4), 0, dtype=np.int)
+X= np.full((MAX_TIME, hour_of_day.shape[1] + day_of_week.shape[1] + 4), 0, dtype=np.float)
 X[0:MAX_TIME, 0:7]= day_of_week
 X[0:MAX_TIME, 7:31]= hour_of_day
 X[0:MAX_TIME, 31:32]= fullness_percent[0:MAX_TIME, index:index+1]
@@ -272,7 +272,7 @@ i= 1
 for train_index, test_index in kf.split(X):
     X_train, X_test= X[train_index], X[test_index]
     y_train, y_test= y[train_index], y[test_index]
-    regr= MLPRegressor(random_state= 1, max_iter= 500).fit(X_train, y_train)
+    regr= MLPRegressor(random_state= 1, max_iter= 1000).fit(X_train, y_train)
     y_pred= regr.predict(X_test)
     score_sum+= regr.score(X_test, y_test)
     print("Data split ", i, " accuracy: ", regr.score(X_test, y_test) * 100, " %")

@@ -5,6 +5,7 @@
 
 * KNN having bikes_changes_past45 makes it less accurate - probably because datapoints that are neighbours insofar as they are similar in their changes in the past 45 minutes are not necessarly similar in the future fullness change of their respective stations
 * Tried evaluating model 1 differntly - same results - error must be in model
+* X input array had datatype set to int, so all float feature into was being rounded
 
 02 / 08 / 2021
 
