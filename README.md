@@ -1,5 +1,10 @@
 # Predicting_bike_distribution
 
+
+03 / 08 / 2021
+
+* KNN having bikes_changes_past45 makes it less accurate - probably because datapoints that are neighbours insofar as they are similar in their changes in the past 45 minutes are not necessarly similar in the future fullness change of their respective stations
+
 02 / 08 / 2021
 
 * reason accuracy was so high is because of the following:
