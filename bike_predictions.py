@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[33]:
 
 
 import csv, sys
@@ -15,6 +15,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.model_selection import KFold
 from sklearn.neighbors import KNeighborsRegressor
 import math
+from sklearn.model_selection import cross_val_score
 
 DUD_VALUE= 0
 TOTAL_ROWS= 2228278 # This number is greater than the total amount of rows circa epoch change to 27th, but it still works
@@ -243,28 +244,26 @@ for epoch_day_i in range(TOTAL_DAYS):
 #     print("####################################")
 
 
-# In[5]:
+# In[57]:
 
 
-y= np.full((MAX_TIME, 6), 0, dtype=np.int)
-y[0:MAX_TIME, 0:1]= np.reshape(fullness_in10[:,get_station_id("PORTOBELLO ROAD")], (MAX_TIME, 1))
-y[0:MAX_TIME, 1:2]= np.reshape(fullness_in10[:,get_station_id("CUSTOM HOUSE QUAY")], (MAX_TIME, 1))
-y[0:MAX_TIME, 2:3]= np.reshape(fullness_in30[:,get_station_id("PORTOBELLO ROAD")], (MAX_TIME, 1))
-y[0:MAX_TIME, 3:4]= np.reshape(fullness_in30[:,get_station_id("CUSTOM HOUSE QUAY")], (MAX_TIME, 1))
-y[0:MAX_TIME, 4:5]= np.reshape(fullness_in60[:,get_station_id("PORTOBELLO ROAD")], (MAX_TIME, 1))
-y[0:MAX_TIME, 5:6]= np.reshape(fullness_in60[:,get_station_id("CUSTOM HOUSE QUAY")], (MAX_TIME, 1))
+index= get_station_id("PORTOBELLO ROAD")
 
+y= np.full((MAX_TIME, 3), 0, dtype=np.int)
+y[0:MAX_TIME, 0:1]= np.reshape(fullness_in10[:,index], (MAX_TIME, 1))
+#y[0:MAX_TIME, 1:2]= np.reshape(fullness_in10[:,get_station_id("CUSTOM HOUSE QUAY")], (MAX_TIME, 1))
+y[0:MAX_TIME, 1:2]= np.reshape(fullness_in30[:,index], (MAX_TIME, 1))
+#y[0:MAX_TIME, 3:4]= np.reshape(fullness_in30[:,get_station_id("CUSTOM HOUSE QUAY")], (MAX_TIME, 1))
+y[0:MAX_TIME, 2:3]= np.reshape(fullness_in60[:,index], (MAX_TIME, 1))
+#y[0:MAX_TIME, 5:6]= np.reshape(fullness_in60[:,get_station_id("CUSTOM HOUSE QUAY")], (MAX_TIME, 1))
 
-# In[6]:
-
-
-X= np.full((MAX_TIME, hour_of_day.shape[1] + day_of_week.shape[1] + bikes_changes_past5.shape[1] * 4), 0, dtype=np.int)
+X= np.full((MAX_TIME, hour_of_day.shape[1] + day_of_week.shape[1] + 4), 0, dtype=np.int)
 X[0:MAX_TIME, 0:7]= day_of_week
 X[0:MAX_TIME, 7:31]= hour_of_day
-X[0:MAX_TIME, 31:139]= fullness_percent
-X[0:MAX_TIME, 139:247]= bikes_changes_past5
-X[0:MAX_TIME, 247:355]= bikes_changes_past15
-X[0:MAX_TIME, 355:463]= bikes_changes_past45
+X[0:MAX_TIME, 31:32]= fullness_percent[0:MAX_TIME, index:index+1]
+X[0:MAX_TIME, 32:33]= bikes_changes_past5[0:MAX_TIME, index:index+1]
+X[0:MAX_TIME, 33:34]= bikes_changes_past15[0:MAX_TIME, index:index+1]
+X[0:MAX_TIME, 34:35]= bikes_changes_past45[0:MAX_TIME, index:index+1]
 
 kf= KFold(n_splits= K)
 kf.get_n_splits(X)
@@ -278,14 +277,19 @@ for train_index, test_index in kf.split(X):
     score_sum+= regr.score(X_test, y_test)
     print("Data split ", i, " accuracy: ", regr.score(X_test, y_test) * 100, " %")
     i+= 1
-
 print("\nAverage accuracy of model: ", (score_sum / K) * 100, " %")
 
+# regr= MLPRegressor(random_state= 1, max_iter= 500).fit(X_train, y_train)
 
-# In[28]:
+# scores= cross_val_score(regr, X, y, cv=5)
+
+# print(scores)
 
 
-X= np.full((MAX_TIME, 6), -1, dtype=np.float)
+# In[46]:
+
+
+X= np.full((MAX_TIME, 5), -1, dtype=np.float)
 
 positions= []
 
@@ -303,10 +307,26 @@ for time_i in range(MAX_TIME):
 index= get_station_id("PORTOBELLO ROAD")
 X[0:MAX_TIME, 2:3]= bikes_changes_past5[0:MAX_TIME, index:index + 1]
 X[0:MAX_TIME, 3:4]= bikes_changes_past15[0:MAX_TIME, index:index + 1]
-X[0:MAX_TIME, 4:5]= bikes_changes_past45[0:MAX_TIME, index:index + 1]
-X[0:MAX_TIME, 5:6]= fullness_percent[0:MAX_TIME, index:index + 1]
+X[0:MAX_TIME, 4:5]= fullness_percent[0:MAX_TIME, index:index + 1]
+
+y= np.full((MAX_TIME, 3), 0, dtype=np.int)
+y[0:MAX_TIME, 0:1]= np.reshape(fullness_in10[:,index], (MAX_TIME, 1))
+y[0:MAX_TIME, 1:2]= np.reshape(fullness_in30[:,index], (MAX_TIME, 1))
+y[0:MAX_TIME, 2:3]= np.reshape(fullness_in60[:,index], (MAX_TIME, 1))
 
 #print(X)
+
+
+# In[47]:
+
+
+neigh= KNeighborsRegressor(n_neighbors= 30, weights='distance')
+
+cv_scores= cross_val_score(neigh, X, y, cv=5)
+
+#print each cv score (accuracy) and average them
+print(cv_scores)
+print('cv_scores mean:{}'.format(np.mean(cv_scores)))
 
 
 # In[8]:
