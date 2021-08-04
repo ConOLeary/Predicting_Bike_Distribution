@@ -1,5 +1,66 @@
 # Predicting_bike_distribution
 
+04 / 08 / 2021
+
+* On Portobello road with version of apporach 1 generalised for all stations
+
+    Data split  1  accuracy:  91.5901298779  %
+    Data split  2  accuracy:  90.84333255725707  %
+    Data split  3  accuracy:  92.11429567826995  %
+    Data split  4  accuracy:  76.6831594124561  %
+    Data split  5  accuracy:  -34.84047791784899  %
+
+    Average accuracy of model:  63.27808792160682  %
+
+* Same as above but for Custom House Quay
+
+    Data split  1  accuracy:  59.086351542752126  %
+    Data split  2  accuracy:  61.66025837446901  %
+    Data split  3  accuracy:  57.31415044971864  %
+    Data split  4  accuracy:  57.844545451913476  %
+    Data split  5  accuracy:  4.349001760599261  %
+
+    Average accuracy of model:  48.050861515890496  %
+
+* On Custom House Quay with version of apporach 1 specified to station
+
+    Data split  1  accuracy:  83.84539054161961  %
+    Data split  2  accuracy:  86.32709352743758  %
+    Data split  3  accuracy:  86.22389292961451  %
+    Data split  4  accuracy:  82.57340319003345  %
+    Data split  5  accuracy:  61.32177880424313  %
+
+    Average accuracy of model:  80.05831179858966  %
+
+* Same as above but for Portobello Road
+
+    Data split  1  accuracy:  96.40710865746992  %
+    Data split  2  accuracy:  97.45073515003462  %
+    Data split  3  accuracy:  98.44706688236448  %
+    Data split  4  accuracy:  96.08811423178055  %
+    Data split  5  accuracy:  67.28540332565863  %
+
+    Average accuracy of model:  91.13568564946164  %
+
+* On Portobello Road with version of apporach 2 specified to station
+
+[0.94888804 0.95045243 0.96736847 0.94180191 0.23107503]
+cv_scores mean:0.8079171763199342
+
+* Same as above but for Custom House Quay
+
+[0.76235509 0.80046548 0.79188385 0.77405647 0.63267826]
+cv_scores mean:0.7522878279125137
+
+* On Portobello road with version of apporach 2 generalised for all stations
+
+[ 0.1180936   0.10373099 -0.01712411 -0.14956879 -0.55059175]
+cv_scores mean:-0.09909201204348392
+
+* Same as above but for Custom House Quay
+
+[ 0.29359842  0.22464943  0.26320513  0.20161131 -3.76352284]
+cv_scores mean:-0.5560917105315376
 
 03 / 08 / 2021
 
