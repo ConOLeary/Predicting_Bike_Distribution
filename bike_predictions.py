@@ -127,7 +127,7 @@ with open(FILENAME, newline='') as f:
         sys.exit('file {}, line {}: {}'.format(filename, reader.line_num, e))
 
 
-# In[ ]:
+# In[129]:
 
 
 # FEATURE DATA PREPERATION
@@ -143,7 +143,7 @@ hour_of_day= np.full((MAX_TIME, HOURS), DUD_VALUE, dtype=np.float)
 
 station_index_decrement= 1 # this is a varying offset for the indexing of stations that accounts for missing stations that are being ignored
 for epoch_day_i in range(TOTAL_DAYS):
-    #print("########### epoch_day_i: ", epoch_day_i)
+    print("########### epoch_day_i: ", epoch_day_i)
     x_offset= epoch_day_i * DATAPOINTS_PER_DAY
     y_offset= 0
     
@@ -162,7 +162,7 @@ for epoch_day_i in range(TOTAL_DAYS):
     day_of_week[x_offset:x_offset + block.shape[0], y_offset:y_offset + block.shape[1]]= block
     
     for station in stations:
-        #print("###### station.index: ", station.index)
+        print("###### station.index: ", station.index)
         if station.index == 1:
             station_index_decrement= 1
         if station.index in MISSING_STATIONS:
@@ -191,32 +191,19 @@ for epoch_day_i in range(TOTAL_DAYS):
         fullness_xago= np.zeros((DATAPOINTS_PER_DAY, int(MAX_HINDSIGHT / DATAPOINT_EVERYX_MIN)), dtype=np.int)
         for col_i in range(fullness_xago.shape[1]):
             fullness_xago[0:DATAPOINTS_PER_DAY, col_i:col_i + 1]= block # this is a provisional assignment; it will be overwritten if the right conditions are present
-        for block_i in range(len(block)):
-            for decrement in reversed(range(fullness_xago.shape[1] + 1)): # i.e. [12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
-                try:
-                    exit_iteration= False
-                    for i in range(DECREMENTS)[1:]:
-                        if block[block_i - min(i, decrement)] == DUD_VALUE:
-                            exit_iteration= True
-                    if exit_iteration:
-                        continue
-                    for ago_i in reversed(range(fullness_xago.shape[1])):
-                        fullness_xago[0:fullness_xago.shape[0], ago_i:ago_i + 1]= block[ago_i - min(ago_i, decrement)]
-                    break
-                except IndexError:
-                    print("IndexError with ", decrement)
-                    continue
-            current= block[block_i]
-            decrement= 1
-            while current == DUD_VALUE and decrement < 10:
-                current= block[block_i - decrement]
-                decrement+= 1
-            for ago_i in range(block_xminchange.shape[1]):
-                block_xminchange[block_i:block_i + 1, ago_i:ago_i + 1]= current - fullness_xago[block_i:block_i + 1, ago_i:ago_i + 1]
+        
+        block_xminchange[block_i:block_i + 1, 0:block_xminchange.shape[1]]= current - fullness_xago[block_i:block_i + 1, 0:block_xminchange.shape[1]]
         bikes_changes_pastx[x_offset:x_offset + block_xminchange.shape[0], y_offset:y_offset + 1, 0:block_xminchange.shape[1]]= np.reshape(block_xminchange, (DATAPOINTS_PER_DAY, 1, block_xminchange.shape[1]))
 
 
-# In[108]:
+# In[130]:
+
+
+print(bikes_changes_pastx.shape)
+print(bikes_changes_pastx[5000:5005])
+
+
+# In[117]:
 
 
 # APPROACH DEFINITIONS
@@ -237,9 +224,9 @@ def run_approach1(station_name):
     X[0:MAX_TIME, 0:7]= day_of_week
     X[0:MAX_TIME, 7:31]= hour_of_day
     X[0:MAX_TIME, 31:32]= fullness_percent[0:MAX_TIME, index:index+1]
-    X[0:MAX_TIME, 32:33]= bikes_changes_past5[0:MAX_TIME, index:index+1]
-    X[0:MAX_TIME, 33:34]= bikes_changes_past15[0:MAX_TIME, index:index+1]
-    X[0:MAX_TIME, 34:35]= bikes_changes_past45[0:MAX_TIME, index:index+1]
+    X[0:MAX_TIME, 32:33]= bikes_changes_pastx[0:MAX_TIME, index:index+1, 0:1] # past5
+    X[0:MAX_TIME, 33:34]= bikes_changes_pastx[0:MAX_TIME, index:index+1, 2:3] # past15
+    X[0:MAX_TIME, 34:35]= bikes_changes_pastx[0:MAX_TIME, index:index+1, 8:9] # past45
     # X[0:MAX_TIME, 31:139]= fullness_percent
     # X[0:MAX_TIME, 139:247]= bikes_changes_past5
     # X[0:MAX_TIME, 247:355]= bikes_changes_past15
@@ -281,9 +268,10 @@ def run_approach2(station_name):
         pos_i= (pos_i + 1) % len(positions)
     
     index= get_station_id(station_name)
-    X[0:MAX_TIME, 2:3]= bikes_changes_past5[0:MAX_TIME, index:index+1] 
-    X[0:MAX_TIME, 3:4]= bikes_changes_past15[0:MAX_TIME, index:index+1] 
-    X[0:MAX_TIME, 4:5]= fullness_percent[0:MAX_TIME, index:index+1] 
+    np.reshape
+    X[0:MAX_TIME, 2:3]= np.reshape((bikes_changes_pastx[0:MAX_TIME, index:index+1, 0:1]), (MAX_TIME, 1)) # past5
+    X[0:MAX_TIME, 3:4]= np.reshape((bikes_changes_pastx[0:MAX_TIME, index:index+1, 2:3]), (MAX_TIME, 1)) # past15
+    X[0:MAX_TIME, 4:5]= np.reshape((bikes_changes_pastx[0:MAX_TIME, index:index+1, 8:9]), (MAX_TIME, 1)) # past45
     # X[0:MAX_TIME, 2:110]= bikes_changes_past5
     # X[0:MAX_TIME, 110:218]= bikes_changes_past15
     # X[0:MAX_TIME, 218:326]= fullness_percent
@@ -299,11 +287,17 @@ def run_approach2(station_name):
     print('cv_scores mean:{}'.format(np.mean(cv_scores)))
 
 
-# In[109]:
+# In[118]:
 
 
 # DRIVER
 
 run_approach2("PORTOBELLO ROAD")
 run_approach2("CUSTOM HOUSE QUAY")
+
+
+# In[ ]:
+
+
+
 
