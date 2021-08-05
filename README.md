@@ -1,5 +1,9 @@
 # Predicting_bike_distribution
 
+05 / 08 / 2021
+
+* Have bike fullness changes for a range of times available now from the FEATURE DATA PREPERATION cell, so going to play around with different combinations of them as features for both approaches
+
 04 / 08 / 2021
 
 * On Portobello road with version of apporach 1 generalised for all stations
