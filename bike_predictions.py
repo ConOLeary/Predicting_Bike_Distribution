@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[94]:
+# In[ ]:
 
 
 # IMPORTS & DEFINITIONS
@@ -37,7 +37,7 @@ MAX_TIME= int((datetime.datetime(2020,4,2,0,0) - EPOCH).total_seconds() / SECS_I
 K= 5
 STEP_SIZE= 0.02185 # just the magic number that leads to 288 values being generated
 R= 0.5
-MAX_HINDSIGHT= 60
+MAX_HINDSIGHT= 60 # minutes
 
 class DataDay: # ideally this would be nested in the Station class
     def __init__(self, index):
@@ -84,7 +84,7 @@ def get_station_id(name):
     return index
 
 
-# In[2]:
+# In[ ]:
 
 
 # DATA STRUCTURING
@@ -127,7 +127,7 @@ with open(FILENAME, newline='') as f:
         sys.exit('file {}, line {}: {}'.format(filename, reader.line_num, e))
 
 
-# In[129]:
+# In[ ]:
 
 
 # FEATURE DATA PREPERATION
@@ -187,23 +187,23 @@ for epoch_day_i in range(TOTAL_DAYS):
         fullness_in60[x_offset:x_offset + block.shape[0], y_offset:y_offset + block.shape[1]]= block
         
         block= np.reshape(station.data_days[epoch_day_i].bikes, (DATAPOINTS_PER_DAY, 1))
+        prev_block= np.reshape(station.data_days[epoch_day_i - 1].bikes, (DATAPOINTS_PER_DAY, 1))
         block_xminchange= np.zeros((DATAPOINTS_PER_DAY, int(MAX_HINDSIGHT / DATAPOINT_EVERYX_MIN)), dtype=np.int)
         fullness_xago= np.zeros((DATAPOINTS_PER_DAY, int(MAX_HINDSIGHT / DATAPOINT_EVERYX_MIN)), dtype=np.int)
-        for col_i in range(fullness_xago.shape[1]):
-            fullness_xago[0:DATAPOINTS_PER_DAY, col_i:col_i + 1]= block # this is a provisional assignment; it will be overwritten if the right conditions are present
         
-        block_xminchange[block_i:block_i + 1, 0:block_xminchange.shape[1]]= current - fullness_xago[block_i:block_i + 1, 0:block_xminchange.shape[1]]
+        for col_i in range(fullness_xago.shape[1]):
+            fullness_xago[col_i:DATAPOINTS_PER_DAY, col_i:col_i + 1]= block[col_i:DATAPOINTS_PER_DAY, 0:1]
+            fullness_xago[0:col_i, col_i:col_i + 1]= prev_block[DATAPOINTS_PER_DAY - col_i:DATAPOINTS_PER_DAY, 0:1]
+        print(fullness_xago)
+        
+        
+        for col_i in range(fullness_xago.shape[1]):
+            block_xminchange[0:DATAPOINTS_PER_DAY, col_i:col_i + 1]= np.subtract(block, fullness_xago[0:DATAPOINTS_PER_DAY, col_i:col_i + 1])
+        
         bikes_changes_pastx[x_offset:x_offset + block_xminchange.shape[0], y_offset:y_offset + 1, 0:block_xminchange.shape[1]]= np.reshape(block_xminchange, (DATAPOINTS_PER_DAY, 1, block_xminchange.shape[1]))
 
 
-# In[130]:
-
-
-print(bikes_changes_pastx.shape)
-print(bikes_changes_pastx[5000:5005])
-
-
-# In[117]:
+# In[ ]:
 
 
 # APPROACH DEFINITIONS
@@ -287,17 +287,11 @@ def run_approach2(station_name):
     print('cv_scores mean:{}'.format(np.mean(cv_scores)))
 
 
-# In[118]:
+# In[ ]:
 
 
 # DRIVER
 
 run_approach2("PORTOBELLO ROAD")
 run_approach2("CUSTOM HOUSE QUAY")
-
-
-# In[ ]:
-
-
-
 

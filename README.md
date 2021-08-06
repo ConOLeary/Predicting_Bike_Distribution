@@ -1,5 +1,9 @@
 # Predicting_bike_distribution
 
+06 / 08 / 2021
+
+* Well on the way to fixing fullness_xago once and for all. However, every data_day has a row of 0s at their end, which I will solve at the root earlier, rather then compensating for it when generating features
+
 05 / 08 / 2021
 
 * Have bike fullness changes for a range of times available now from the FEATURE DATA PREPERATION cell, so going to play around with different combinations of them as features for both approaches
