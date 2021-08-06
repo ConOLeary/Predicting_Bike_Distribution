@@ -20,20 +20,22 @@ import math
 from sklearn.model_selection import cross_val_score
 
 DUD_VALUE= 0 # change from 0 to something like 123 for debugging
-TOTAL_ROWS= 2228278 # This number is greater than the total amount of rows circa epoch change to 27th, but it still works
-INPUT_ROWS_LIMIT= TOTAL_ROWS
+EMPTY_DATA_DAY_VAL= 123456789
+TOTAL_ROWS= 9999999999
+INPUT_ROWS_LIMIT= TOTAL_ROWS # 500000
 FILENAME= 'dublinbikes_2020_Q1.csv'
 MAX_STATION_ID= 117
 SECS_IN_5MIN= 300
 DATAPOINT_EVERYX_MIN= 5
 DATAPOINTS_PER_DAY= 288
 DAYS_OF_WEEK= ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] # yes, I consider Monday to be the '0'/start of the week
-STARTING_DAY= 0 # aka Monday. Because the 27th of Jan 2020 is a Monday
-MISSING_STATIONS= [117, 116, 70, 60, 46, 35, 20, 14, 1]
+STARTING_DATE= 0 # aka Monday. Because the 27th of Jan 2020 is a Monday
+MISSING_STATIONS= [117, 116, 70, 60, 46, 35, 20, 14, 1, 0]
+SUBSTANDARD_DAYS= [50, 49]
 TOTAL_DAYS= 66 # from 27 / 1 / 2020 to (and including) 1 / 4 / 2020
 HOURS= 24
 EPOCH= datetime.datetime(2020, 1, 27, 0, 0)
-MAX_TIME= int((datetime.datetime(2020,4,2,0,0) - EPOCH).total_seconds() / SECS_IN_5MIN)
+TOTAL_TIME_DATAPOINTS= int((datetime.datetime(2020,4,2,0,0) - EPOCH).total_seconds() / SECS_IN_5MIN)
 K= 5
 STEP_SIZE= 0.02185 # just the magic number that leads to 288 values being generated
 R= 0.5
@@ -42,22 +44,24 @@ MAX_HINDSIGHT= 60 # minutes
 class DataDay: # ideally this would be nested in the Station class
     def __init__(self, index):
         self.index= index
+        self.substandard_day= False
+        if index in SUBSTANDARD_DAYS:
+            self.substandard_day= True
         self.times_populated= 0
-        self.day_of_week= DUD_VALUE
-        self.day_since_epoch= DUD_VALUE
-        self.day_of_week= ((STARTING_DAY + index - 1) % len(DAYS_OF_WEEK))
+        self.day_of_week= ((STARTING_DATE + index) % len(DAYS_OF_WEEK))
         
-        self.daily_epoch_time= np.full(DATAPOINTS_PER_DAY, DUD_VALUE, dtype=np.int)
-        self.epoch_time= np.full(DATAPOINTS_PER_DAY, DUD_VALUE, dtype=np.int)
-        self.bikes= np.full(DATAPOINTS_PER_DAY, DUD_VALUE, dtype=np.int)
-        self.percent_bikes= np.full(DATAPOINTS_PER_DAY, DUD_VALUE, dtype=np.float)
+        self.daily_epoch_time= np.full(DATAPOINTS_PER_DAY, EMPTY_DATA_DAY_VAL, dtype=np.int)
+        self.epoch_time= np.full(DATAPOINTS_PER_DAY, EMPTY_DATA_DAY_VAL, dtype=np.int)
+        self.bikes= np.full(DATAPOINTS_PER_DAY, EMPTY_DATA_DAY_VAL, dtype=np.int)
+        self.percent_bikes= np.full(DATAPOINTS_PER_DAY, float(EMPTY_DATA_DAY_VAL), dtype=np.float)
 
     def populate(self, daily_epoch_time, epoch_time, bikes, percent_bikes):
-        self.daily_epoch_time[daily_epoch_time]= daily_epoch_time
-        self.epoch_time[daily_epoch_time]= epoch_time
-        self.bikes[daily_epoch_time]= bikes
-        self.percent_bikes[daily_epoch_time]= percent_bikes
-        self.times_populated+= 1
+        if self.substandard_day == False:
+            self.daily_epoch_time[daily_epoch_time]= daily_epoch_time
+            self.epoch_time[daily_epoch_time]= epoch_time
+            self.bikes[daily_epoch_time]= bikes
+            self.percent_bikes[daily_epoch_time]= percent_bikes
+            self.times_populated+= 1
 
 class Station:
     def __init__(self, index):
@@ -67,7 +71,7 @@ class Station:
         self.address= DUD_VALUE
         self.latitude= DUD_VALUE
         self.longitude= DUD_VALUE
-        self.data_days= [DataDay(i) for i in range(1, TOTAL_DAYS + 2)] # + 1 because 0 is excluded and + 1 because we want to include the last day, not have it as the rim
+        self.data_days= [DataDay(i) for i in range(0, TOTAL_DAYS)]
     
     def populate_consts(self, name, bike_capacity, address, latitude, longitude):
         self.name= name
@@ -91,7 +95,7 @@ def get_station_id(name):
 
 total_capacity= 0 # not in use currently
 index= []; daily_epoch_time= []; epoch_time= []; percent_bikes= [];
-stations= [Station(i) for i in range(1, MAX_STATION_ID + 1)] # note: MAX_STATION_ID + 1 is not included in the range
+stations= [Station(i) for i in range(0, MAX_STATION_ID + 1)] # + 1 so as to include MAX_STATION_ID in the range. Even though there is no station 0 or 1, I include them so that station indices are also array indices
 indices_to_populate= list(range(1, MAX_STATION_ID + 1))
 for index in MISSING_STATIONS:
     indices_to_populate.remove(index)
@@ -102,11 +106,11 @@ with open(FILENAME, newline='') as f:
     try:
         while len(indices_to_populate) != 0:
             row= next(reader)
-            if int(row[0]) == current_index: # this 'if' is just for performance
+            if int(row[0]) == current_index: # this clause is just for performance
                 continue
             current_index= int(row[0])
             if current_index in indices_to_populate:
-                stations[current_index - 2].populate_consts(row[3], row[4], row[8], row[9], row[10])
+                stations[current_index].populate_consts(row[3], row[4], row[8], row[9], row[10])
                 indices_to_populate.remove(current_index)
                 total_capacity+= int(row[4])
         
@@ -119,9 +123,9 @@ with open(FILENAME, newline='') as f:
                 continue
             try:
                 epoch_time= int((datetime.datetime(int(row[1][0:4]), int(row[1][5:7]), int(row[1][8:10]), int(row[1][11: 13]), int(row[1][14: 16])) - EPOCH).total_seconds() / SECS_IN_5MIN)
-                stations[int(row[0]) - 1].data_days[int(epoch_time / (DATAPOINTS_PER_DAY - 1))].populate(                     int((datetime.datetime(int(row[1][0:4]), int(row[1][5:7]), int(row[1][8:10]), int(row[1][11: 13]), int(row[1][14: 16])) - datetime.datetime(int(row[1][0:4]), int(row[1][5:7]), int(row[1][8:10]), 0, 0)).total_seconds() / (SECS_IN_5MIN + 1)),                     epoch_time,                     int(row[6]),                     float("{:.3f}".format(float(row[6]) / float(row[4]))))
+                stations[int(row[0])].data_days[int(epoch_time / DATAPOINTS_PER_DAY)].populate(                     int((datetime.datetime(int(row[1][0:4]), int(row[1][5:7]), int(row[1][8:10]), int(row[1][11: 13]), int(row[1][14: 16])) - datetime.datetime(int(row[1][0:4]), int(row[1][5:7]), int(row[1][8:10]), 0, 0)).total_seconds() / (SECS_IN_5MIN)),                     epoch_time,                     int(row[6]),                     float("{:.3f}".format(float(row[6]) / float(row[4]))))
             except IndexError as e:
-                print("\nTRIED: ", epoch_time, ' / ', DATAPOINTS_PER_DAY, ' = ', int(epoch_time / (DATAPOINTS_PER_DAY - 1)))
+                print("\nTRIED: ", epoch_time, ' / ', DATAPOINTS_PER_DAY, ' = ', int(epoch_time / DATAPOINTS_PER_DAY))
                 print(row[1])
     except csv.Error as e:
         sys.exit('file {}, line {}: {}'.format(filename, reader.line_num, e))
@@ -130,16 +134,33 @@ with open(FILENAME, newline='') as f:
 # In[ ]:
 
 
+
+            
+for station_i, station in enumerate(stations):
+    last_bikes= 0
+    last_percent_bikes= 0
+    for day_i, data_day in enumerate(station.data_days):
+        for val_i, val in enumerate(data_day.bikes):
+            if val == EMPTY_DATA_DAY_VAL:
+                stations[station_i].data_days[day_i].populate(val_i, day_i * DATAPOINTS_PER_DAY + val_i, last_bikes, last_percent_bikes)
+            else:
+                last_bikes= data_day.bikes[val_i]
+                last_percent_bikes= data_day.percent_bikes[val_i]
+
+
+# In[ ]:
+
+
 # FEATURE DATA PREPERATION
 
-fullness= np.full((MAX_TIME, MAX_STATION_ID - len(MISSING_STATIONS)), DUD_VALUE, dtype=np.int)
-fullness_in10= np.full((MAX_TIME, MAX_STATION_ID - len(MISSING_STATIONS)), DUD_VALUE, dtype=np.int)
-fullness_in30= np.full((MAX_TIME, MAX_STATION_ID - len(MISSING_STATIONS)), DUD_VALUE, dtype=np.int)
-fullness_in60= np.full((MAX_TIME, MAX_STATION_ID - len(MISSING_STATIONS)), DUD_VALUE, dtype=np.int)
-fullness_percent= np.full((MAX_TIME, MAX_STATION_ID - len(MISSING_STATIONS)), DUD_VALUE, dtype=np.float)
-bikes_changes_pastx= np.full((MAX_TIME, MAX_STATION_ID - len(MISSING_STATIONS), int(MAX_HINDSIGHT / DATAPOINT_EVERYX_MIN)), DUD_VALUE, dtype=np.int)
-day_of_week= np.full((MAX_TIME, len(DAYS_OF_WEEK)), DUD_VALUE, dtype=np.int)
-hour_of_day= np.full((MAX_TIME, HOURS), DUD_VALUE, dtype=np.float)
+fullness= np.full((TOTAL_TIME_DATAPOINTS, MAX_STATION_ID - len(MISSING_STATIONS)), DUD_VALUE, dtype=np.int)
+fullness_in10= np.full((TOTAL_TIME_DATAPOINTS, MAX_STATION_ID - len(MISSING_STATIONS)), DUD_VALUE, dtype=np.int)
+fullness_in30= np.full((TOTAL_TIME_DATAPOINTS, MAX_STATION_ID - len(MISSING_STATIONS)), DUD_VALUE, dtype=np.int)
+fullness_in60= np.full((TOTAL_TIME_DATAPOINTS, MAX_STATION_ID - len(MISSING_STATIONS)), DUD_VALUE, dtype=np.int)
+fullness_percent= np.full((TOTAL_TIME_DATAPOINTS, MAX_STATION_ID - len(MISSING_STATIONS)), DUD_VALUE, dtype=np.float)
+bikes_changes_pastx= np.full((TOTAL_TIME_DATAPOINTS, MAX_STATION_ID - len(MISSING_STATIONS), int(MAX_HINDSIGHT / DATAPOINT_EVERYX_MIN)), DUD_VALUE, dtype=np.int)
+day_of_week= np.full((TOTAL_TIME_DATAPOINTS, len(DAYS_OF_WEEK)), DUD_VALUE, dtype=np.int)
+hour_of_day= np.full((TOTAL_TIME_DATAPOINTS, HOURS), DUD_VALUE, dtype=np.float)
 
 station_index_decrement= 1 # this is a varying offset for the indexing of stations that accounts for missing stations that are being ignored
 for epoch_day_i in range(TOTAL_DAYS):
@@ -150,7 +171,7 @@ for epoch_day_i in range(TOTAL_DAYS):
     block= np.zeros((DATAPOINTS_PER_DAY, HOURS), dtype=np.float)
     daily_epoch_time= list(range(DATAPOINTS_PER_DAY))
     for time_i in daily_epoch_time:
-        hour= float("{:.3f}".format(time_i / 12))
+        hour= float("{:.3f}".format(time_i / 12)) # divide by 12 because there are 12 datapoints in an hour
         block[time_i][(int(hour) + 1) % HOURS]= hour % 1
         block[time_i][int(hour)]= 1 - (hour % 1)
     hour_of_day[x_offset:x_offset + block.shape[0], y_offset:y_offset + block.shape[1]]= block
@@ -211,26 +232,26 @@ for epoch_day_i in range(TOTAL_DAYS):
 def run_approach1(station_name):
     index= get_station_id(station_name)
     
-    y= np.full((MAX_TIME, 3), 0, dtype=np.int) # change the 3 to a 6 to do both stations at once on the generalised-training form of an approach
-    y[0:MAX_TIME, 0:1]= np.reshape(fullness_in10[:,index], (MAX_TIME, 1))
-    y[0:MAX_TIME, 1:2]= np.reshape(fullness_in30[:,index], (MAX_TIME, 1))
-    y[0:MAX_TIME, 2:3]= np.reshape(fullness_in60[:,index], (MAX_TIME, 1))
-    #y[0:MAX_TIME, 3:4]= np.reshape(fullness_in10[:,get_station_id("CUSTOM HOUSE QUAY")], (MAX_TIME, 1))
-    #y[0:MAX_TIME, 4:5]= np.reshape(fullness_in30[:,get_station_id("CUSTOM HOUSE QUAY")], (MAX_TIME, 1))
-    #y[0:MAX_TIME, 5:6]= np.reshape(fullness_in60[:,get_station_id("CUSTOM HOUSE QUAY")], (MAX_TIME, 1))
+    y= np.full((TOTAL_TIME_DATAPOINTS, 3), 0, dtype=np.int) # change the 3 to a 6 to do both stations at once on the generalised-training form of an approach
+    y[0:TOTAL_TIME_DATAPOINTS, 0:1]= np.reshape(fullness_in10[:,index], (TOTAL_TIME_DATAPOINTS, 1))
+    y[0:TOTAL_TIME_DATAPOINTS, 1:2]= np.reshape(fullness_in30[:,index], (TOTAL_TIME_DATAPOINTS, 1))
+    y[0:TOTAL_TIME_DATAPOINTS, 2:3]= np.reshape(fullness_in60[:,index], (TOTAL_TIME_DATAPOINTS, 1))
+    #y[0:TOTAL_TIME_DATAPOINTS, 3:4]= np.reshape(fullness_in10[:,get_station_id("CUSTOM HOUSE QUAY")], (TOTAL_TIME_DATAPOINTS, 1))
+    #y[0:TOTAL_TIME_DATAPOINTS, 4:5]= np.reshape(fullness_in30[:,get_station_id("CUSTOM HOUSE QUAY")], (TOTAL_TIME_DATAPOINTS, 1))
+    #y[0:TOTAL_TIME_DATAPOINTS, 5:6]= np.reshape(fullness_in60[:,get_station_id("CUSTOM HOUSE QUAY")], (TOTAL_TIME_DATAPOINTS, 1))
 
-    X= np.full((MAX_TIME, hour_of_day.shape[1] + day_of_week.shape[1] + 4                 #* bikes_changes_past5.shape[1] \
+    X= np.full((TOTAL_TIME_DATAPOINTS, hour_of_day.shape[1] + day_of_week.shape[1] + 4                 #* bikes_changes_past5.shape[1] \
                ), 0, dtype=np.float)
-    X[0:MAX_TIME, 0:7]= day_of_week
-    X[0:MAX_TIME, 7:31]= hour_of_day
-    X[0:MAX_TIME, 31:32]= fullness_percent[0:MAX_TIME, index:index+1]
-    X[0:MAX_TIME, 32:33]= bikes_changes_pastx[0:MAX_TIME, index:index+1, 0:1] # past5
-    X[0:MAX_TIME, 33:34]= bikes_changes_pastx[0:MAX_TIME, index:index+1, 2:3] # past15
-    X[0:MAX_TIME, 34:35]= bikes_changes_pastx[0:MAX_TIME, index:index+1, 8:9] # past45
-    # X[0:MAX_TIME, 31:139]= fullness_percent
-    # X[0:MAX_TIME, 139:247]= bikes_changes_past5
-    # X[0:MAX_TIME, 247:355]= bikes_changes_past15
-    # X[0:MAX_TIME, 355:463]= bikes_changes_past45
+    X[0:TOTAL_TIME_DATAPOINTS, 0:7]= day_of_week
+    X[0:TOTAL_TIME_DATAPOINTS, 7:31]= hour_of_day
+    X[0:TOTAL_TIME_DATAPOINTS, 31:32]= fullness_percent[0:TOTAL_TIME_DATAPOINTS, index:index+1]
+    X[0:TOTAL_TIME_DATAPOINTS, 32:33]= bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index+1, 0:1] # past5
+    X[0:TOTAL_TIME_DATAPOINTS, 33:34]= bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index+1, 2:3] # past15
+    X[0:TOTAL_TIME_DATAPOINTS, 34:35]= bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index+1, 8:9] # past45
+    # X[0:TOTAL_TIME_DATAPOINTS, 31:139]= fullness_percent
+    # X[0:TOTAL_TIME_DATAPOINTS, 139:247]= bikes_changes_past5
+    # X[0:TOTAL_TIME_DATAPOINTS, 247:355]= bikes_changes_past15
+    # X[0:TOTAL_TIME_DATAPOINTS, 355:463]= bikes_changes_past45
 
 
     kf= KFold(n_splits= K)
@@ -254,7 +275,7 @@ def run_approach1(station_name):
     # print(scores)
     
 def run_approach2(station_name):
-    X= np.full((MAX_TIME, 2 + 3             #* bikes_changes_past5.shape[1] \
+    X= np.full((TOTAL_TIME_DATAPOINTS, 2 + 3             #* bikes_changes_past5.shape[1] \
            ), -1, dtype=np.float)
     
     positions= []; t= 0
@@ -262,24 +283,24 @@ def run_approach2(station_name):
         positions.append((1 - (R * math.cos(t) + R), R * math.sin(t) + R))
         t+= STEP_SIZE
     pos_i= 0
-    for time_i in range(MAX_TIME):
+    for time_i in range(TOTAL_TIME_DATAPOINTS):
         X[time_i, 0]= positions[pos_i][0]
         X[time_i, 1]= positions[pos_i][1]
         pos_i= (pos_i + 1) % len(positions)
     
     index= get_station_id(station_name)
     np.reshape
-    X[0:MAX_TIME, 2:3]= np.reshape((bikes_changes_pastx[0:MAX_TIME, index:index+1, 0:1]), (MAX_TIME, 1)) # past5
-    X[0:MAX_TIME, 3:4]= np.reshape((bikes_changes_pastx[0:MAX_TIME, index:index+1, 2:3]), (MAX_TIME, 1)) # past15
-    X[0:MAX_TIME, 4:5]= np.reshape((bikes_changes_pastx[0:MAX_TIME, index:index+1, 8:9]), (MAX_TIME, 1)) # past45
-    # X[0:MAX_TIME, 2:110]= bikes_changes_past5
-    # X[0:MAX_TIME, 110:218]= bikes_changes_past15
-    # X[0:MAX_TIME, 218:326]= fullness_percent
+    X[0:TOTAL_TIME_DATAPOINTS, 2:3]= np.reshape((bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index+1, 0:1]), (TOTAL_TIME_DATAPOINTS, 1)) # past5
+    X[0:TOTAL_TIME_DATAPOINTS, 3:4]= np.reshape((bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index+1, 2:3]), (TOTAL_TIME_DATAPOINTS, 1)) # past15
+    X[0:TOTAL_TIME_DATAPOINTS, 4:5]= np.reshape((bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index+1, 8:9]), (TOTAL_TIME_DATAPOINTS, 1)) # past45
+    # X[0:TOTAL_TIME_DATAPOINTS, 2:110]= bikes_changes_past5
+    # X[0:TOTAL_TIME_DATAPOINTS, 110:218]= bikes_changes_past15
+    # X[0:TOTAL_TIME_DATAPOINTS, 218:326]= fullness_percent
     
-    y= np.full((MAX_TIME, 3), 0, dtype=np.int)
-    y[0:MAX_TIME, 0:1]= np.reshape(fullness_in10[:,index], (MAX_TIME, 1))
-    y[0:MAX_TIME, 1:2]= np.reshape(fullness_in30[:,index], (MAX_TIME, 1))
-    y[0:MAX_TIME, 2:3]= np.reshape(fullness_in60[:,index], (MAX_TIME, 1))
+    y= np.full((TOTAL_TIME_DATAPOINTS, 3), 0, dtype=np.int)
+    y[0:TOTAL_TIME_DATAPOINTS, 0:1]= np.reshape(fullness_in10[:,index], (TOTAL_TIME_DATAPOINTS, 1))
+    y[0:TOTAL_TIME_DATAPOINTS, 1:2]= np.reshape(fullness_in30[:,index], (TOTAL_TIME_DATAPOINTS, 1))
+    y[0:TOTAL_TIME_DATAPOINTS, 2:3]= np.reshape(fullness_in60[:,index], (TOTAL_TIME_DATAPOINTS, 1))
     
     neigh= KNeighborsRegressor(n_neighbors= 30, weights='distance')
     cv_scores= cross_val_score(neigh, X, y, cv=5)

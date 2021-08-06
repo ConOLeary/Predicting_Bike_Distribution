@@ -3,6 +3,11 @@
 06 / 08 / 2021
 
 * Well on the way to fixing fullness_xago once and for all. However, every data_day has a row of 0s at their end, which I will solve at the root earlier, rather then compensating for it when generating features
+* Things i've learned from this project that have little to nothing to do with machine learning:
+    Don't start structuring your data until you know what you want from it
+    If you write code with questionable use of indices, everything built on top of that has to compensate for the irregularity
+    When divising algorithms, visualise it with a pen and paper wherever applicable
+* I should evaluate to see how often the models are completely accurate, as well as how often they are wrong by 1 or 2 bikes
 
 05 / 08 / 2021
 
