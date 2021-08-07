@@ -3,6 +3,7 @@
 07 / 08 / 2021
 
 * bikes_changes_pastx finally ironed out to perfection, but models will not return positive results ..
+* A ~10% leap in accuracy for approach 1! However, going to see what features from bikes_changes_pastx I can thin out without significant accuracy loss as the load time for approach 1 is way up. Would also like to see if giving approach 1 some data from stations that aren't in question (but not as much as that about the station in question) has benefit
 
 06 / 08 / 2021
 
