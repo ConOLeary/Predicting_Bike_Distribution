@@ -1,5 +1,9 @@
 # Predicting_bike_distribution
 
+07 / 08 / 2021
+
+* bikes_changes_pastx finally ironed out to perfection, but models will not return positive results ..
+
 06 / 08 / 2021
 
 * Well on the way to fixing fullness_xago once and for all. However, every data_day has a row of 0s at their end, which I will solve at the root earlier, rather then compensating for it when generating features

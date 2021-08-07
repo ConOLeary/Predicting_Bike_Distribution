@@ -31,7 +31,7 @@ DATAPOINTS_PER_DAY= 288
 DAYS_OF_WEEK= ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] # yes, I consider Monday to be the '0'/start of the week
 STARTING_DATE= 0 # aka Monday. Because the 27th of Jan 2020 is a Monday
 MISSING_STATIONS= [117, 116, 70, 60, 46, 35, 20, 14, 1, 0]
-SUBSTANDARD_DAYS= [50, 49]
+SUBSTANDARD_DAYS= [] # [50, 49]
 TOTAL_DAYS= 66 # from 27 / 1 / 2020 to (and including) 1 / 4 / 2020
 HOURS= 24
 EPOCH= datetime.datetime(2020, 1, 27, 0, 0)
@@ -96,7 +96,7 @@ def get_station_id(name):
 total_capacity= 0 # not in use currently
 index= []; daily_epoch_time= []; epoch_time= []; percent_bikes= [];
 stations= [Station(i) for i in range(0, MAX_STATION_ID + 1)] # + 1 so as to include MAX_STATION_ID in the range. Even though there is no station 0 or 1, I include them so that station indices are also array indices
-indices_to_populate= list(range(1, MAX_STATION_ID + 1))
+indices_to_populate= list(range(0, MAX_STATION_ID + 1))
 for index in MISSING_STATIONS:
     indices_to_populate.remove(index)
 
@@ -148,7 +148,7 @@ for station_i, station in enumerate(stations):
                 last_percent_bikes= data_day.percent_bikes[val_i]
 
 
-# In[ ]:
+# In[86]:
 
 
 # FEATURE DATA PREPERATION
@@ -208,23 +208,23 @@ for epoch_day_i in range(TOTAL_DAYS):
         fullness_in60[x_offset:x_offset + block.shape[0], y_offset:y_offset + block.shape[1]]= block
         
         block= np.reshape(station.data_days[epoch_day_i].bikes, (DATAPOINTS_PER_DAY, 1))
-        prev_block= np.reshape(station.data_days[epoch_day_i - 1].bikes, (DATAPOINTS_PER_DAY, 1))
+        if epoch_day_i - 1 == -1:
+            prev_block= np.zeros((DATAPOINTS_PER_DAY, 1), dtype=np.int)
+        else:
+            prev_block= np.reshape(station.data_days[epoch_day_i - 1].bikes, (DATAPOINTS_PER_DAY, 1))
         block_xminchange= np.zeros((DATAPOINTS_PER_DAY, int(MAX_HINDSIGHT / DATAPOINT_EVERYX_MIN)), dtype=np.int)
         fullness_xago= np.zeros((DATAPOINTS_PER_DAY, int(MAX_HINDSIGHT / DATAPOINT_EVERYX_MIN)), dtype=np.int)
-        
         for col_i in range(fullness_xago.shape[1]):
-            fullness_xago[col_i:DATAPOINTS_PER_DAY, col_i:col_i + 1]= block[col_i:DATAPOINTS_PER_DAY, 0:1]
-            fullness_xago[0:col_i, col_i:col_i + 1]= prev_block[DATAPOINTS_PER_DAY - col_i:DATAPOINTS_PER_DAY, 0:1]
-        print(fullness_xago)
-        
-        
+            i= col_i + 1
+            fullness_xago[i:DATAPOINTS_PER_DAY, col_i:col_i + 1]= block[0:DATAPOINTS_PER_DAY - i, 0:1]
+            fullness_xago[0:i, col_i:col_i + 1]= prev_block[DATAPOINTS_PER_DAY - i:DATAPOINTS_PER_DAY, 0:1]
         for col_i in range(fullness_xago.shape[1]):
             block_xminchange[0:DATAPOINTS_PER_DAY, col_i:col_i + 1]= np.subtract(block, fullness_xago[0:DATAPOINTS_PER_DAY, col_i:col_i + 1])
         
         bikes_changes_pastx[x_offset:x_offset + block_xminchange.shape[0], y_offset:y_offset + 1, 0:block_xminchange.shape[1]]= np.reshape(block_xminchange, (DATAPOINTS_PER_DAY, 1, block_xminchange.shape[1]))
 
 
-# In[ ]:
+# In[120]:
 
 
 # APPROACH DEFINITIONS
@@ -240,14 +240,14 @@ def run_approach1(station_name):
     #y[0:TOTAL_TIME_DATAPOINTS, 4:5]= np.reshape(fullness_in30[:,get_station_id("CUSTOM HOUSE QUAY")], (TOTAL_TIME_DATAPOINTS, 1))
     #y[0:TOTAL_TIME_DATAPOINTS, 5:6]= np.reshape(fullness_in60[:,get_station_id("CUSTOM HOUSE QUAY")], (TOTAL_TIME_DATAPOINTS, 1))
 
-    X= np.full((TOTAL_TIME_DATAPOINTS, hour_of_day.shape[1] + day_of_week.shape[1] + 4                 #* bikes_changes_past5.shape[1] \
+    X= np.full((TOTAL_TIME_DATAPOINTS, hour_of_day.shape[1] + day_of_week.shape[1] + 4                 #* bikes_changes_past5.shape[1] \ # This line is uncommented when training on all stations
                ), 0, dtype=np.float)
     X[0:TOTAL_TIME_DATAPOINTS, 0:7]= day_of_week
     X[0:TOTAL_TIME_DATAPOINTS, 7:31]= hour_of_day
     X[0:TOTAL_TIME_DATAPOINTS, 31:32]= fullness_percent[0:TOTAL_TIME_DATAPOINTS, index:index+1]
-    X[0:TOTAL_TIME_DATAPOINTS, 32:33]= bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index+1, 0:1] # past5
-    X[0:TOTAL_TIME_DATAPOINTS, 33:34]= bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index+1, 2:3] # past15
-    X[0:TOTAL_TIME_DATAPOINTS, 34:35]= bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index+1, 8:9] # past45
+    X[0:TOTAL_TIME_DATAPOINTS, 32:33]= np.reshape((bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index+1, 0:1]), (TOTAL_TIME_DATAPOINTS, 1)) # past5
+    X[0:TOTAL_TIME_DATAPOINTS, 33:34]= np.reshape((bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index+1, 2:3]), (TOTAL_TIME_DATAPOINTS, 1)) # past15
+    X[0:TOTAL_TIME_DATAPOINTS, 34:35]= np.reshape((bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index+1, 8:9]), (TOTAL_TIME_DATAPOINTS, 1)) # past45
     # X[0:TOTAL_TIME_DATAPOINTS, 31:139]= fullness_percent
     # X[0:TOTAL_TIME_DATAPOINTS, 139:247]= bikes_changes_past5
     # X[0:TOTAL_TIME_DATAPOINTS, 247:355]= bikes_changes_past15
@@ -275,7 +275,7 @@ def run_approach1(station_name):
     # print(scores)
     
 def run_approach2(station_name):
-    X= np.full((TOTAL_TIME_DATAPOINTS, 2 + 3             #* bikes_changes_past5.shape[1] \
+    X= np.full((TOTAL_TIME_DATAPOINTS, 2 + 4             #* bikes_changes_pastx.shape[1] \ # This line is uncommented when training on all stations
            ), -1, dtype=np.float)
     
     positions= []; t= 0
@@ -289,14 +289,13 @@ def run_approach2(station_name):
         pos_i= (pos_i + 1) % len(positions)
     
     index= get_station_id(station_name)
-    np.reshape
-    X[0:TOTAL_TIME_DATAPOINTS, 2:3]= np.reshape((bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index+1, 0:1]), (TOTAL_TIME_DATAPOINTS, 1)) # past5
-    X[0:TOTAL_TIME_DATAPOINTS, 3:4]= np.reshape((bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index+1, 2:3]), (TOTAL_TIME_DATAPOINTS, 1)) # past15
-    X[0:TOTAL_TIME_DATAPOINTS, 4:5]= np.reshape((bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index+1, 8:9]), (TOTAL_TIME_DATAPOINTS, 1)) # past45
+    X[0:TOTAL_TIME_DATAPOINTS, 2:3]= fullness_percent[0:TOTAL_TIME_DATAPOINTS, index:index+1]
+    X[0:TOTAL_TIME_DATAPOINTS, 3:4]= np.reshape((bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index+1, 0:1]), (TOTAL_TIME_DATAPOINTS, 1)) # past5
+    X[0:TOTAL_TIME_DATAPOINTS, 4:5]= np.reshape((bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index+1, 2:3]), (TOTAL_TIME_DATAPOINTS, 1)) # past15
+    X[0:TOTAL_TIME_DATAPOINTS, 5:6]= np.reshape((bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index+1, 8:9]), (TOTAL_TIME_DATAPOINTS, 1)) # past45
     # X[0:TOTAL_TIME_DATAPOINTS, 2:110]= bikes_changes_past5
     # X[0:TOTAL_TIME_DATAPOINTS, 110:218]= bikes_changes_past15
-    # X[0:TOTAL_TIME_DATAPOINTS, 218:326]= fullness_percent
-    
+
     y= np.full((TOTAL_TIME_DATAPOINTS, 3), 0, dtype=np.int)
     y[0:TOTAL_TIME_DATAPOINTS, 0:1]= np.reshape(fullness_in10[:,index], (TOTAL_TIME_DATAPOINTS, 1))
     y[0:TOTAL_TIME_DATAPOINTS, 1:2]= np.reshape(fullness_in30[:,index], (TOTAL_TIME_DATAPOINTS, 1))
@@ -313,6 +312,12 @@ def run_approach2(station_name):
 
 # DRIVER
 
-run_approach2("PORTOBELLO ROAD")
-run_approach2("CUSTOM HOUSE QUAY")
+run_approach1("PORTOBELLO ROAD")
+run_approach1("CUSTOM HOUSE QUAY")
+
+
+# In[ ]:
+
+
+
 
