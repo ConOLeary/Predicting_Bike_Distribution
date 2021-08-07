@@ -4,6 +4,18 @@
 
 * bikes_changes_pastx finally ironed out to perfection, but models will not return positive results ..
 * A ~10% leap in accuracy for approach 1! However, going to see what features from bikes_changes_pastx I can thin out without significant accuracy loss as the load time for approach 1 is way up. Would also like to see if giving approach 1 some data from stations that aren't in question (but not as much as that about the station in question) has benefit
+* So I forgot to increase the feature matrix row size when I added the new bikes_changes_pastx features on the last run, which led to past5, past10, & past15 being used instead of past5, past15, & past45, and that is what caused the 10% accuracy increase. Accident is the mother of creation
+* 90 & 80 % on approach 1 (portobello road & custom house quay) with past 5 .. past 15
+  90 & 79 % on approach 1 (portobello road & custom house quay) with past 5 .. past 25 + past 35 + past 45
+  90 " .. " with past 5 .. past 25
+  90 " .. " with past 5 + past 10
+  82 " .. " with past 5 + past 10 for all stations
+  80 " .. " with past 5 + past 10, and past 15 + past 20 for all stations (the all stations here could be subed for stations that are near in terms of latitude and longitude)
+  77 " .. " with past 5 + past 10, and percent_fullness for all stations
+  88 " .. " with nothing
+  88 " .. " with past 5 + past 10, and extra hidden layers! (maybe the extra hidden layers should be coupled with extra pastxs)
+  90 " .. " with past 5 + past 10, and x10 default alpha
+
 
 06 / 08 / 2021
 
