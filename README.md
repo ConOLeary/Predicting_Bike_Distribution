@@ -6,6 +6,7 @@
 I think the way I have invisioned y is not relevant to the baseline model. if I simply made y= time, then I could make predictions on the test y values, and technically I could be enquiring from the perspective of a time 10, 30 or 60 minutes beforehand, but then it wouldn't be a proper test scenario, as I would have the data points surrounding the 'future' time we are predicting at.
 I think what I will have to do is find a way to do the train test split so that the test datapoints are contiguous in terms of time.
 * Current approach for the baseline of using the first 4/5 of the data as training for a linear regression with poly features is a complete flop. Next 'easy' thing to do would be making a poly linear regression for each day
+* Yep.. baseline model is certainly not a baseline model at this point - might as well finish it and have it an additional model
 
 08 / 08 / 2021
 
