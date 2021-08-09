@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[45]:
+# In[59]:
 
 
 # IMPORTS & DEFINITIONS
@@ -18,6 +18,9 @@ from sklearn.model_selection import KFold
 from sklearn.neighbors import KNeighborsRegressor
 import math
 from sklearn.model_selection import cross_val_score
+from sklearn import linear_model
+from sklearn.metrics import r2_score
+from sklearn.preprocessing import PolynomialFeatures
 
 DUD_VALUE= 0 # change from 0 to something like 123 for debugging
 EMPTY_DATA_DAY_VAL= 123456789
@@ -89,7 +92,7 @@ def get_station_id(name):
     return index
 
 
-# In[ ]:
+# In[2]:
 
 
 # DATA STRUCTURING
@@ -132,7 +135,7 @@ with open(FILENAME, newline='') as f:
         sys.exit('file {}, line {}: {}'.format(filename, reader.line_num, e))
 
 
-# In[ ]:
+# In[3]:
 
 
 
@@ -165,7 +168,7 @@ hour_of_day= np.full((TOTAL_TIME_DATAPOINTS, HOURS), DUD_VALUE, dtype=np.float)
 
 station_index_decrement= 1 # this is a varying offset for the indexing of stations that accounts for missing stations that are being ignored
 for epoch_day_i in range(TOTAL_DAYS):
-    print("########### epoch_day_i: ", epoch_day_i)
+    #print("########### epoch_day_i: ", epoch_day_i)
     x_offset= epoch_day_i * DATAPOINTS_PER_DAY
     y_offset= 0
     
@@ -184,7 +187,7 @@ for epoch_day_i in range(TOTAL_DAYS):
     day_of_week[x_offset:x_offset + block.shape[0], y_offset:y_offset + block.shape[1]]= block
     
     for station in stations:
-        print("###### station.index: ", station.index)
+        #print("###### station.index: ", station.index)
         if station.index == 1:
             station_index_decrement= 1
         if station.index in MISSING_STATIONS:
@@ -225,11 +228,26 @@ for epoch_day_i in range(TOTAL_DAYS):
         bikes_changes_pastx[x_offset:x_offset + block_xminchange.shape[0], y_offset:y_offset + 1, 0:block_xminchange.shape[1]]= np.reshape(block_xminchange, (DATAPOINTS_PER_DAY, 1, block_xminchange.shape[1]))
 
 
-# In[55]:
+# In[80]:
 
 
 # APPROACH DEFINITIONS
 
+def run_baseline(station_name):
+    index= get_station_id(station_name)
+    X= np.full((TOTAL_TIME_DATAPOINTS, 1), 0, dtype=np.int)
+    y= np.full(TOTAL_TIME_DATAPOINTS, 0, dtype=np.int)
+    X[0:TOTAL_TIME_DATAPOINTS, 0:1]= fullness[0:TOTAL_TIME_DATAPOINTS, index:index + 1]
+    y[0:TOTAL_TIME_DATAPOINTS]= np.arange(0, TOTAL_TIME_DATAPOINTS, dtype=np.int)
+    
+    polynomial_features= PolynomialFeatures(degree= 3)
+    poly_X= polynomial_features.fit_transform(X, y)
+    X_train, X_test, y_train, y_test= train_test_split(poly_X, y, test_size= 0.2, shuffle= False)
+    regr= linear_model.LinearRegression().fit(X_train, y_train)
+    
+    y_pred= regr.predict(X_test)
+    print("R**2 accuracy: ", r2_score(y_test, y_pred) * 100, " %")
+    
 def run_approach1(station_name):
     index= get_station_id(station_name)
     
@@ -237,9 +255,6 @@ def run_approach1(station_name):
     y[0:TOTAL_TIME_DATAPOINTS, 0:1]= np.reshape(fullness_in10[:,index], (TOTAL_TIME_DATAPOINTS, 1))
     y[0:TOTAL_TIME_DATAPOINTS, 1:2]= np.reshape(fullness_in30[:,index], (TOTAL_TIME_DATAPOINTS, 1))
     y[0:TOTAL_TIME_DATAPOINTS, 2:3]= np.reshape(fullness_in60[:,index], (TOTAL_TIME_DATAPOINTS, 1))
-    #y[0:TOTAL_TIME_DATAPOINTS, 3:4]= np.reshape(fullness_in10[:,get_station_id("CUSTOM HOUSE QUAY")], (TOTAL_TIME_DATAPOINTS, 1))
-    #y[0:TOTAL_TIME_DATAPOINTS, 4:5]= np.reshape(fullness_in30[:,get_station_id("CUSTOM HOUSE QUAY")], (TOTAL_TIME_DATAPOINTS, 1))
-    #y[0:TOTAL_TIME_DATAPOINTS, 5:6]= np.reshape(fullness_in60[:,get_station_id("CUSTOM HOUSE QUAY")], (TOTAL_TIME_DATAPOINTS, 1))
 
     X= np.full((TOTAL_TIME_DATAPOINTS, hour_of_day.shape[1] + day_of_week.shape[1] + 3                 + 0 * NUM_STATIONS                ), 0, dtype=np.float)
     X[0:TOTAL_TIME_DATAPOINTS, 0:7]= day_of_week
@@ -254,7 +269,6 @@ def run_approach1(station_name):
     # X[0:TOTAL_TIME_DATAPOINTS, 247:355]= np.reshape((bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, 0:NUM_STATIONS, 2:3]), (TOTAL_TIME_DATAPOINTS, 1)) # past15
     # X[0:TOTAL_TIME_DATAPOINTS, 355:463]= np.reshape((bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, 0:NUM_STATIONS, 8:9]), (TOTAL_TIME_DATAPOINTS, 1)) # past45
 
-
     kf= KFold(n_splits= K)
     kf.get_n_splits(X)
     score_sum= 0.0
@@ -265,18 +279,19 @@ def run_approach1(station_name):
         regr= MLPRegressor(random_state= 1, max_iter= 1000, alpha=0.001).fit(X_train, y_train)
         y_pred= regr.predict(X_test)
         score_sum+= regr.score(X_test, y_test)
-        print("Data split ", i, " accuracy: ", regr.score(X_test, y_test) * 100, " %")
+        print("R**2 accuracy of data split", i, ": ", regr.score(X_test, y_test) * 100, " %")
         i+= 1
-    print("\nAverage accuracy of model: ", (score_sum / K) * 100, " %")
-
-    # Below is alternative evaluation code
-
-    # regr= MLPRegressor(random_state= 1, max_iter= 500).fit(X_train, y_train)
-    # scores= cross_val_score(regr, X, y, cv=5)
-    # print(scores)
+    print("\nAVERAGE R**2 evaluation: ", (score_sum / K) * 100, " %")
     
 def run_approach2(station_name):
-    X= np.full((TOTAL_TIME_DATAPOINTS, 2 + 4             #* bikes_changes_pastx.shape[1] \ # This line is uncommented when training on all stations
+    index= get_station_id(station_name)
+    
+    y= np.full((TOTAL_TIME_DATAPOINTS, 3), 0, dtype=np.int) # change the 3 to a 6 to do both stations at once on the generalised-training form of an approach
+    y[0:TOTAL_TIME_DATAPOINTS, 0:1]= np.reshape(fullness_in10[:,index], (TOTAL_TIME_DATAPOINTS, 1))
+    y[0:TOTAL_TIME_DATAPOINTS, 1:2]= np.reshape(fullness_in30[:,index], (TOTAL_TIME_DATAPOINTS, 1))
+    y[0:TOTAL_TIME_DATAPOINTS, 2:3]= np.reshape(fullness_in60[:,index], (TOTAL_TIME_DATAPOINTS, 1))
+    
+    X= np.full((TOTAL_TIME_DATAPOINTS, 2 + 2             #* bikes_changes_pastx.shape[1] \ # This line is uncommented when training on all stations
            ), -1, dtype=np.float)
     
     positions= []; t= 0
@@ -289,18 +304,10 @@ def run_approach2(station_name):
         X[time_i, 1]= positions[pos_i][1]
         pos_i= (pos_i + 1) % len(positions)
     
-    index= get_station_id(station_name)
     X[0:TOTAL_TIME_DATAPOINTS, 2:3]= fullness_percent[0:TOTAL_TIME_DATAPOINTS, index:index+1]
     X[0:TOTAL_TIME_DATAPOINTS, 3:4]= np.reshape((bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index+1, 0:1]), (TOTAL_TIME_DATAPOINTS, 1)) # past5
-    X[0:TOTAL_TIME_DATAPOINTS, 4:5]= np.reshape((bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index+1, 2:3]), (TOTAL_TIME_DATAPOINTS, 1)) # past15
-    X[0:TOTAL_TIME_DATAPOINTS, 5:6]= np.reshape((bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index+1, 8:9]), (TOTAL_TIME_DATAPOINTS, 1)) # past45
     # X[0:TOTAL_TIME_DATAPOINTS, 2:110]= bikes_changes_past5
     # X[0:TOTAL_TIME_DATAPOINTS, 110:218]= bikes_changes_past15
-
-    y= np.full((TOTAL_TIME_DATAPOINTS, 3), 0, dtype=np.int)
-    y[0:TOTAL_TIME_DATAPOINTS, 0:1]= np.reshape(fullness_in10[:,index], (TOTAL_TIME_DATAPOINTS, 1))
-    y[0:TOTAL_TIME_DATAPOINTS, 1:2]= np.reshape(fullness_in30[:,index], (TOTAL_TIME_DATAPOINTS, 1))
-    y[0:TOTAL_TIME_DATAPOINTS, 2:3]= np.reshape(fullness_in60[:,index], (TOTAL_TIME_DATAPOINTS, 1))
     
     neigh= KNeighborsRegressor(n_neighbors= 30, weights='distance')
     cv_scores= cross_val_score(neigh, X, y, cv=5)
@@ -308,14 +315,14 @@ def run_approach2(station_name):
     print('cv_scores mean:{}'.format(np.mean(cv_scores)))
 
 
-# In[56]:
+# In[79]:
 
 
 # DRIVER
 
-run_approach1("PORTOBELLO ROAD")
+run_baseline("PORTOBELLO ROAD")
 print("--------------------")
-run_approach1("CUSTOM HOUSE QUAY")
+#run_baseline("CUSTOM HOUSE QUAY")
 
 
 # In[ ]:

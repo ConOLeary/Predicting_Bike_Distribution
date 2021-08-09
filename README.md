@@ -1,5 +1,17 @@
 # Predicting_bike_distribution
 
+09 / 08 / 2021
+
+* Initial effort at a 'quick' baseline model is a complete flop. I certainly have ammendments in mind, but I am evaluating the added complexity of such and questioning if making them would render the baseline modal not baseline.
+I think the way I have invisioned y is not relevant to the baseline model. if I simply made y= time, then I could make predictions on the test y values, and technically I could be enquiring from the perspective of a time 10, 30 or 60 minutes beforehand, but then it wouldn't be a proper test scenario, as I would have the data points surrounding the 'future' time we are predicting at.
+I think what I will have to do is find a way to do the train test split so that the test datapoints are contiguous in terms of time.
+* Current approach for the baseline of using the first 4/5 of the data as training for a linear regression with poly features is a complete flop. Next 'easy' thing to do would be making a poly linear regression for each day
+
+08 / 08 / 2021
+
+* Just realising now that I should be producing graphs for the tuning process, like optimisating alpha
+* I now understand the purpose of a baseline modal (thanks to this blog https://blog.insightdatascience.com/always-start-with-a-stupid-model-no-exceptions-3a22314b9aaa); linear regression baseline modal could easily be done. I see how building a baseline first would have lent insight to my more complex approaches
+
 07 / 08 / 2021
 
 * bikes_changes_pastx finally ironed out to perfection, but models will not return positive results ..
