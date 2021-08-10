@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[166]:
 
 
 # IMPORTS & DEFINITIONS
@@ -21,6 +21,7 @@ from sklearn.model_selection import cross_val_score
 from sklearn import linear_model
 from sklearn.metrics import r2_score
 from sklearn.preprocessing import PolynomialFeatures
+from sklearn.metrics import mean_squared_error
 
 DUD_VALUE= 0 # change from 0 to something like 123 for debugging
 EMPTY_DATA_DAY_VAL= 123456789
@@ -241,7 +242,7 @@ for station in stations:
         average_weekday_fullness[0:DATAPOINTS_PER_DAY, y_offset:y_offset+1, day_of_week_i:day_of_week_i+1]/= weekdays_vol[y_offset:y_offset+1, day_of_week_i:day_of_week_i+1]
 
 
-# In[ ]:
+# In[170]:
 
 
 # APPROACH DEFINITIONS
@@ -314,44 +315,30 @@ def run_approach2(station_name):
 
 def run_baseline(station_name):
     index= get_station_id(station_name)
-    polynomial_features= PolynomialFeatures(degree= 20)
     max_train_time= DATAPOINTS_PER_DAY * DAYS_PER_WEEKDAY * len(DAYS_OF_WEEK)
-    X_test= fullness[max_train_time:TOTAL_TIME_DATAPOINTS, index:index+1]
-    print("X_test.shape:", X_test.shape)
-    y_test= np.arange(max_train_time, TOTAL_TIME_DATAPOINTS, dtype=np.int)
-    print("y_test.shape:", y_test.shape)
-    poly_X_test= polynomial_features.fit_transform(X_test, y_test)
-    print("poly_X_test.shape:", poly_X_test.shape)
-    
-    models= []
-    for day_of_week_i in range(len(DAYS_OF_WEEK)):
-        X_train= np.reshape((average_weekday_fullness[0:DATAPOINTS_PER_DAY, index:index+1, day_of_week_i:day_of_week_i+1]), (DATAPOINTS_PER_DAY, 1))
-        print("X_train.shape:", X_train.shape)
-        y_train= np.arange(0, DATAPOINTS_PER_DAY, dtype=np.int)
-        print("y_train.shape:", y_train.shape)
-        poly_X_train= polynomial_features.fit_transform(X_train, y_train)
-        print("poly_X_train.shape:", poly_X_train.shape)
-        regr= linear_model.LinearRegression().fit(poly_X_train, y_train)
-        models.append(regr)
-    
-    y_pred= np.zeros(X_test.shape[0], dtype=np.float)
-    for val_i in range(X_test.shape[0]):
-        day_of_week= ((STARTING_DATE + int(val_i / DATAPOINTS_PER_DAY)) % len(DAYS_OF_WEEK))
-        x= np.reshape(poly_X_test[val_i], (1, 21))
-        y_pred[val_i]= models[day_of_week].predict(x)
-    X_test= np.reshape(X_test, X_test.shape[0])
-    for val_i in range(y_pred.shape[0]):
-        print("X_test:",X_test[val_i]," y_pred:",y_pred[val_i])
-    
+    y_test= np.reshape(fullness[max_train_time:TOTAL_TIME_DATAPOINTS, index:index+1], TOTAL_TIME_DATAPOINTS - max_train_time)
+    y_pred= np.zeros(TOTAL_TIME_DATAPOINTS - max_train_time)
+    for i in range(int((TOTAL_TIME_DATAPOINTS - max_train_time) / DATAPOINTS_PER_DAY)):
+        datapoint_i= i * DATAPOINTS_PER_DAY
+        day_of_week_i= int((max_train_time + datapoint_i) / DATAPOINTS_PER_DAY) % len(DAYS_OF_WEEK)
+        y_pred[datapoint_i:datapoint_i + DATAPOINTS_PER_DAY]= np.reshape(average_weekday_fullness[0:DATAPOINTS_PER_DAY, index:index+1, day_of_week_i:day_of_week_i+1], DATAPOINTS_PER_DAY)
+#     for val_i in range(y_pred.shape[0]):
+#         print("y_test:",y_test[val_i]," y_pred:",y_pred[val_i])
     print("R**2 accuracy: ", r2_score(y_test, y_pred) * 100, " %")
 
 
-# In[ ]:
+# In[171]:
 
 
 # DRIVER
 
 run_baseline("PORTOBELLO ROAD")
 print("--------------------")
-#run_baseline("CUSTOM HOUSE QUAY")
+run_baseline("CUSTOM HOUSE QUAY")
+
+
+# In[ ]:
+
+
+
 
