@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[59]:
+# In[ ]:
 
 
 # IMPORTS & DEFINITIONS
@@ -27,14 +27,14 @@ EMPTY_DATA_DAY_VAL= 123456789
 TOTAL_ROWS= 9999999999
 INPUT_ROWS_LIMIT= TOTAL_ROWS # 500000
 FILENAME= 'dublinbikes_2020_Q1.csv'
-MAX_STATION_ID= 117
+MAX_STATIONS= 118
 SECS_IN_5MIN= 300
 DATAPOINT_EVERYX_MIN= 5
 DATAPOINTS_PER_DAY= 288
 DAYS_OF_WEEK= ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] # yes, I consider Monday to be the '0'/start of the week
 STARTING_DATE= 0 # aka Monday. Because the 27th of Jan 2020 is a Monday
 MISSING_STATIONS= [117, 116, 70, 60, 46, 35, 20, 14, 1, 0]
-NUM_STATIONS= MAX_STATION_ID - len(MISSING_STATIONS)
+NUM_STATIONS= MAX_STATIONS - len(MISSING_STATIONS)
 SUBSTANDARD_DAYS= [] # [50, 49]
 TOTAL_DAYS= 66 # from 27 / 1 / 2020 to (and including) 1 / 4 / 2020
 HOURS= 24
@@ -44,6 +44,7 @@ K= 5
 STEP_SIZE= 0.02185 # just the magic number that leads to 288 values being generated
 R= 0.5
 MAX_HINDSIGHT= 60 # minutes
+DAYS_PER_WEEKDAY= 5
 
 class DataDay: # ideally this would be nested in the Station class
     def __init__(self, index):
@@ -92,15 +93,15 @@ def get_station_id(name):
     return index
 
 
-# In[2]:
+# In[ ]:
 
 
 # DATA STRUCTURING
 
 total_capacity= 0 # not in use currently
 index= []; daily_epoch_time= []; epoch_time= []; percent_bikes= [];
-stations= [Station(i) for i in range(0, MAX_STATION_ID + 1)] # + 1 so as to include MAX_STATION_ID in the range. Even though there is no station 0 or 1, I include them so that station indices are also array indices
-indices_to_populate= list(range(0, MAX_STATION_ID + 1))
+stations= [Station(i) for i in range(0, MAX_STATIONS)]
+indices_to_populate= list(range(0, MAX_STATIONS))
 for index in MISSING_STATIONS:
     indices_to_populate.remove(index)
 
@@ -129,16 +130,11 @@ with open(FILENAME, newline='') as f:
                 epoch_time= int((datetime.datetime(int(row[1][0:4]), int(row[1][5:7]), int(row[1][8:10]), int(row[1][11: 13]), int(row[1][14: 16])) - EPOCH).total_seconds() / SECS_IN_5MIN)
                 stations[int(row[0])].data_days[int(epoch_time / DATAPOINTS_PER_DAY)].populate(                     int((datetime.datetime(int(row[1][0:4]), int(row[1][5:7]), int(row[1][8:10]), int(row[1][11: 13]), int(row[1][14: 16])) - datetime.datetime(int(row[1][0:4]), int(row[1][5:7]), int(row[1][8:10]), 0, 0)).total_seconds() / (SECS_IN_5MIN)),                     epoch_time,                     int(row[6]),                     float("{:.3f}".format(float(row[6]) / float(row[4]))))
             except IndexError as e:
-                print("\nTRIED: ", epoch_time, ' / ', DATAPOINTS_PER_DAY, ' = ', int(epoch_time / DATAPOINTS_PER_DAY))
-                print(row[1])
+                print("Error:", e, int(row[0]))
+                #print("\nTRIED: ", epoch_time, ' / ', DATAPOINTS_PER_DAY, ' = ', int(epoch_time / DATAPOINTS_PER_DAY))
+                #print(row[1])
     except csv.Error as e:
         sys.exit('file {}, line {}: {}'.format(filename, reader.line_num, e))
-
-
-# In[3]:
-
-
-
             
 for station_i, station in enumerate(stations):
     last_bikes= 0
@@ -157,16 +153,18 @@ for station_i, station in enumerate(stations):
 
 # FEATURE DATA PREPERATION
 
-fullness= np.full((TOTAL_TIME_DATAPOINTS, MAX_STATION_ID - len(MISSING_STATIONS)), DUD_VALUE, dtype=np.int)
-fullness_in10= np.full((TOTAL_TIME_DATAPOINTS, MAX_STATION_ID - len(MISSING_STATIONS)), DUD_VALUE, dtype=np.int)
-fullness_in30= np.full((TOTAL_TIME_DATAPOINTS, MAX_STATION_ID - len(MISSING_STATIONS)), DUD_VALUE, dtype=np.int)
-fullness_in60= np.full((TOTAL_TIME_DATAPOINTS, MAX_STATION_ID - len(MISSING_STATIONS)), DUD_VALUE, dtype=np.int)
-fullness_percent= np.full((TOTAL_TIME_DATAPOINTS, MAX_STATION_ID - len(MISSING_STATIONS)), DUD_VALUE, dtype=np.float)
-bikes_changes_pastx= np.full((TOTAL_TIME_DATAPOINTS, MAX_STATION_ID - len(MISSING_STATIONS), int(MAX_HINDSIGHT / DATAPOINT_EVERYX_MIN)), DUD_VALUE, dtype=np.int)
+fullness= np.full((TOTAL_TIME_DATAPOINTS, NUM_STATIONS), DUD_VALUE, dtype=np.int)
+fullness_in10= np.full((TOTAL_TIME_DATAPOINTS, NUM_STATIONS), DUD_VALUE, dtype=np.int)
+fullness_in30= np.full((TOTAL_TIME_DATAPOINTS, NUM_STATIONS), DUD_VALUE, dtype=np.int)
+fullness_in60= np.full((TOTAL_TIME_DATAPOINTS, NUM_STATIONS), DUD_VALUE, dtype=np.int)
+fullness_percent= np.full((TOTAL_TIME_DATAPOINTS, NUM_STATIONS), DUD_VALUE, dtype=np.float)
+bikes_changes_pastx= np.full((TOTAL_TIME_DATAPOINTS, NUM_STATIONS, int(MAX_HINDSIGHT / DATAPOINT_EVERYX_MIN)), DUD_VALUE, dtype=np.int)
 day_of_week= np.full((TOTAL_TIME_DATAPOINTS, len(DAYS_OF_WEEK)), DUD_VALUE, dtype=np.int)
 hour_of_day= np.full((TOTAL_TIME_DATAPOINTS, HOURS), DUD_VALUE, dtype=np.float)
+average_weekday_fullness= np.full((DATAPOINTS_PER_DAY, NUM_STATIONS, len(DAYS_OF_WEEK)), DUD_VALUE, dtype=np.float)
+weekdays_vol= np.full((NUM_STATIONS, len(DAYS_OF_WEEK)), 0, dtype=np.float)
 
-station_index_decrement= 1 # this is a varying offset for the indexing of stations that accounts for missing stations that are being ignored
+station_index_decrement= 0 # this is a varying offset for the indexing of stations that accounts for missing stations that are being ignored
 for epoch_day_i in range(TOTAL_DAYS):
     #print("########### epoch_day_i: ", epoch_day_i)
     x_offset= epoch_day_i * DATAPOINTS_PER_DAY
@@ -180,16 +178,16 @@ for epoch_day_i in range(TOTAL_DAYS):
         block[time_i][int(hour)]= 1 - (hour % 1)
     hour_of_day[x_offset:x_offset + block.shape[0], y_offset:y_offset + block.shape[1]]= block
     
-    day= stations[2].data_days[epoch_day_i].day_of_week
+    day_of_week= stations[2].data_days[epoch_day_i].day_of_week
     block= np.zeros((DATAPOINTS_PER_DAY, len(DAYS_OF_WEEK)), dtype=np.int)
     for block_i, sub_arr in enumerate(block):
-        block[block_i][day]= 1
+        block[block_i][day_of_week]= 1
     day_of_week[x_offset:x_offset + block.shape[0], y_offset:y_offset + block.shape[1]]= block
     
     for station in stations:
         #print("###### station.index: ", station.index)
-        if station.index == 1:
-            station_index_decrement= 1
+        if station.index == 0:
+            station_index_decrement= 0
         if station.index in MISSING_STATIONS:
             station_index_decrement+= 1
             continue
@@ -202,6 +200,10 @@ for epoch_day_i in range(TOTAL_DAYS):
         block= station.data_days[epoch_day_i].bikes
         block= np.reshape(block, (DATAPOINTS_PER_DAY, 1))
         fullness[x_offset:x_offset + block.shape[0], y_offset:y_offset + block.shape[1]]= block
+        block= np.reshape(block, (DATAPOINTS_PER_DAY, 1, 1))
+        if weekdays_vol[y_offset, day_of_week] < DAYS_PER_WEEKDAY:
+            average_weekday_fullness[0:DATAPOINTS_PER_DAY, y_offset:y_offset + block.shape[1], day_of_week:day_of_week+1]+= block
+            weekdays_vol[y_offset:y_offset+1, day_of_week:day_of_week+1]+= 1
         
         bikes= station.data_days[epoch_day_i].bikes
         block= np.reshape(bikes[2:], (bikes.shape[0] - 2, 1))
@@ -227,26 +229,22 @@ for epoch_day_i in range(TOTAL_DAYS):
         
         bikes_changes_pastx[x_offset:x_offset + block_xminchange.shape[0], y_offset:y_offset + 1, 0:block_xminchange.shape[1]]= np.reshape(block_xminchange, (DATAPOINTS_PER_DAY, 1, block_xminchange.shape[1]))
 
+station_index_decrement= 0 # this is a varying offset for the indexing of stations that accounts for missing stations that are being ignored
+for station in stations:
+    if station.index == 0: # [117, 116, 70, 60, 46, 35, 20, 14, 1, 0]
+        station_index_decrement= 0
+    if station.index in MISSING_STATIONS:
+        station_index_decrement+= 1
+        continue
+    y_offset= station.index - station_index_decrement
+    for day_of_week_i in range(len(DAYS_OF_WEEK)):
+        average_weekday_fullness[0:DATAPOINTS_PER_DAY, y_offset:y_offset+1, day_of_week_i:day_of_week_i+1]/= weekdays_vol[y_offset:y_offset+1, day_of_week_i:day_of_week_i+1]
 
-# In[80]:
+
+# In[ ]:
 
 
 # APPROACH DEFINITIONS
-
-def run_baseline(station_name):
-    index= get_station_id(station_name)
-    X= np.full((TOTAL_TIME_DATAPOINTS, 1), 0, dtype=np.int)
-    y= np.full(TOTAL_TIME_DATAPOINTS, 0, dtype=np.int)
-    X[0:TOTAL_TIME_DATAPOINTS, 0:1]= fullness[0:TOTAL_TIME_DATAPOINTS, index:index + 1]
-    y[0:TOTAL_TIME_DATAPOINTS]= np.arange(0, TOTAL_TIME_DATAPOINTS, dtype=np.int)
-    
-    polynomial_features= PolynomialFeatures(degree= 3)
-    poly_X= polynomial_features.fit_transform(X, y)
-    X_train, X_test, y_train, y_test= train_test_split(poly_X, y, test_size= 0.2, shuffle= False)
-    regr= linear_model.LinearRegression().fit(X_train, y_train)
-    
-    y_pred= regr.predict(X_test)
-    print("R**2 accuracy: ", r2_score(y_test, y_pred) * 100, " %")
     
 def run_approach1(station_name):
     index= get_station_id(station_name)
@@ -314,8 +312,41 @@ def run_approach2(station_name):
     print(cv_scores) # print each cv score (accuracy) and average them
     print('cv_scores mean:{}'.format(np.mean(cv_scores)))
 
+def run_baseline(station_name):
+    index= get_station_id(station_name)
+    polynomial_features= PolynomialFeatures(degree= 20)
+    max_train_time= DATAPOINTS_PER_DAY * DAYS_PER_WEEKDAY * len(DAYS_OF_WEEK)
+    X_test= fullness[max_train_time:TOTAL_TIME_DATAPOINTS, index:index+1]
+    print("X_test.shape:", X_test.shape)
+    y_test= np.arange(max_train_time, TOTAL_TIME_DATAPOINTS, dtype=np.int)
+    print("y_test.shape:", y_test.shape)
+    poly_X_test= polynomial_features.fit_transform(X_test, y_test)
+    print("poly_X_test.shape:", poly_X_test.shape)
+    
+    models= []
+    for day_of_week_i in range(len(DAYS_OF_WEEK)):
+        X_train= np.reshape((average_weekday_fullness[0:DATAPOINTS_PER_DAY, index:index+1, day_of_week_i:day_of_week_i+1]), (DATAPOINTS_PER_DAY, 1))
+        print("X_train.shape:", X_train.shape)
+        y_train= np.arange(0, DATAPOINTS_PER_DAY, dtype=np.int)
+        print("y_train.shape:", y_train.shape)
+        poly_X_train= polynomial_features.fit_transform(X_train, y_train)
+        print("poly_X_train.shape:", poly_X_train.shape)
+        regr= linear_model.LinearRegression().fit(poly_X_train, y_train)
+        models.append(regr)
+    
+    y_pred= np.zeros(X_test.shape[0], dtype=np.float)
+    for val_i in range(X_test.shape[0]):
+        day_of_week= ((STARTING_DATE + int(val_i / DATAPOINTS_PER_DAY)) % len(DAYS_OF_WEEK))
+        x= np.reshape(poly_X_test[val_i], (1, 21))
+        y_pred[val_i]= models[day_of_week].predict(x)
+    X_test= np.reshape(X_test, X_test.shape[0])
+    for val_i in range(y_pred.shape[0]):
+        print("X_test:",X_test[val_i]," y_pred:",y_pred[val_i])
+    
+    print("R**2 accuracy: ", r2_score(y_test, y_pred) * 100, " %")
 
-# In[79]:
+
+# In[ ]:
 
 
 # DRIVER
@@ -323,10 +354,4 @@ def run_approach2(station_name):
 run_baseline("PORTOBELLO ROAD")
 print("--------------------")
 #run_baseline("CUSTOM HOUSE QUAY")
-
-
-# In[ ]:
-
-
-
 
