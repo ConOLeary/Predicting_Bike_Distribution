@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[212]:
+# In[227]:
 
 
 # IMPORTS & DEFINITIONS
@@ -248,7 +248,7 @@ print(avrg_weekday_full)
 # avrg_weekday_full= np.full((NUM_STATIONS, len(DAYS_OF_WEEK)), 0, dtype=np.float)
 
 
-# In[213]:
+# In[216]:
 
 
 # APPROACH DEFINITIONS
@@ -287,6 +287,7 @@ def run_approach1(station_name):
         print("R**2 accuracy of data split", i, ": ", regr.score(X_test, y_test) * 100, " %")
         i+= 1
     print("\nAVERAGE R**2 evaluation: ", (score_sum / K) * 100, " %")
+    return score_sum / K
     
 def run_approach2(station_name):
     index= get_station_id(station_name)
@@ -318,8 +319,9 @@ def run_approach2(station_name):
     cv_scores= cross_val_score(neigh, X, y, cv=5)
     print(cv_scores) # print each cv score (accuracy) and average them
     print('cv_scores mean:{}'.format(np.mean(cv_scores)))
+    return np.mean(cv_scores)
 
-def run_baseline(station_name):
+def run_baseline(station_name, regulariser_coef):
     index= get_station_id(station_name)
     max_train_time= DATAPOINTS_PER_DAY * DAYS_PER_WEEKDAY * len(DAYS_OF_WEEK)
     y_test= np.reshape(fullness[max_train_time:TOTAL_TIME_DATAPOINTS, index:index+1], TOTAL_TIME_DATAPOINTS - max_train_time)
@@ -327,24 +329,48 @@ def run_baseline(station_name):
     for i in range(int((TOTAL_TIME_DATAPOINTS - max_train_time) / DATAPOINTS_PER_DAY)):
         datapoint_i= i * DATAPOINTS_PER_DAY
         day_of_week_i= int((max_train_time + datapoint_i) / DATAPOINTS_PER_DAY) % len(DAYS_OF_WEEK)
-        y_pred[datapoint_i:datapoint_i + DATAPOINTS_PER_DAY]= (np.reshape(average_weekday_fullness[0:DATAPOINTS_PER_DAY, index:index+1, day_of_week_i:day_of_week_i+1], DATAPOINTS_PER_DAY) * (1 - HOMEMADE_REGULISER) + np.full(DATAPOINTS_PER_DAY, avrg_weekday_full[index:index+1, day_of_week_i:day_of_week_i+1]) * HOMEMADE_REGULISER)
+        y_pred[datapoint_i:datapoint_i + DATAPOINTS_PER_DAY]= (np.reshape(average_weekday_fullness[0:DATAPOINTS_PER_DAY, index:index+1, day_of_week_i:day_of_week_i+1], DATAPOINTS_PER_DAY) * (1 - regulariser_coef) + np.full(DATAPOINTS_PER_DAY, avrg_weekday_full[index:index+1, day_of_week_i:day_of_week_i+1]) * regulariser_coef)
 #     for val_i in range(y_pred.shape[0]):
 #         print("y_test:",y_test[val_i]," y_pred:",y_pred[val_i])
     print("R**2 accuracy: ", r2_score(y_test, y_pred) * 100, " %")
+    return r2_score(y_test, y_pred)
 
 
-# In[214]:
+# In[217]:
 
 
 # DRIVER
 
-run_baseline("PORTOBELLO ROAD")
+run_baseline("PORTOBELLO ROAD", HOMEMADE_REGULISER)
 print("--------------------")
-run_baseline("CUSTOM HOUSE QUAY")
+run_baseline("CUSTOM HOUSE QUAY", HOMEMADE_REGULISER)
 
 
-# In[ ]:
+# In[233]:
 
 
+# #############################################################################
+# Baseline coef optimisation graph
 
+
+coefs= np.linspace(0, 1, num=30)
+s1_r2= []
+s2_r2= []
+
+for coef in coefs:
+    s1_r2.append(run_baseline("PORTOBELLO ROAD", coef))
+    s2_r2.append(run_baseline("CUSTOM HOUSE QUAY", coef))
+
+ax= plt.gca()
+
+ax.plot(coefs, s1_r2, label="Portobello Road")
+ax.plot(coefs, s2_r2, label="Custom House Quay")
+
+# Place a legend to the right of this smaller subplot.
+plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
+
+plt.xlabel('Coefficent for homemade regulariser')
+plt.ylabel('R**2 score')
+plt.title('Baseline model')
+plt.show()
 
