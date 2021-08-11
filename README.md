@@ -1,5 +1,9 @@
 # Predicting_bike_distribution
 
+See report: PredictDistribDublinBike.pdf
+
+## Development Log
+
 09 / 08 / 2021
 
 * Initial effort at a 'quick' baseline model is a complete flop. I certainly have ammendments in mind, but I am evaluating the added complexity of such and questioning if making them would render the baseline modal not baseline.
