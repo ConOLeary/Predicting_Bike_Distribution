@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[166]:
+# In[212]:
 
 
 # IMPORTS & DEFINITIONS
@@ -46,6 +46,7 @@ STEP_SIZE= 0.02185 # just the magic number that leads to 288 values being genera
 R= 0.5
 MAX_HINDSIGHT= 60 # minutes
 DAYS_PER_WEEKDAY= 5
+HOMEMADE_REGULISER= 0.8
 
 class DataDay: # ideally this would be nested in the Station class
     def __init__(self, index):
@@ -149,7 +150,7 @@ for station_i, station in enumerate(stations):
                 last_percent_bikes= data_day.percent_bikes[val_i]
 
 
-# In[ ]:
+# In[175]:
 
 
 # FEATURE DATA PREPERATION
@@ -160,10 +161,11 @@ fullness_in30= np.full((TOTAL_TIME_DATAPOINTS, NUM_STATIONS), DUD_VALUE, dtype=n
 fullness_in60= np.full((TOTAL_TIME_DATAPOINTS, NUM_STATIONS), DUD_VALUE, dtype=np.int)
 fullness_percent= np.full((TOTAL_TIME_DATAPOINTS, NUM_STATIONS), DUD_VALUE, dtype=np.float)
 bikes_changes_pastx= np.full((TOTAL_TIME_DATAPOINTS, NUM_STATIONS, int(MAX_HINDSIGHT / DATAPOINT_EVERYX_MIN)), DUD_VALUE, dtype=np.int)
-day_of_week= np.full((TOTAL_TIME_DATAPOINTS, len(DAYS_OF_WEEK)), DUD_VALUE, dtype=np.int)
+days_of_week= np.full((TOTAL_TIME_DATAPOINTS, len(DAYS_OF_WEEK)), DUD_VALUE, dtype=np.int)
 hour_of_day= np.full((TOTAL_TIME_DATAPOINTS, HOURS), DUD_VALUE, dtype=np.float)
 average_weekday_fullness= np.full((DATAPOINTS_PER_DAY, NUM_STATIONS, len(DAYS_OF_WEEK)), DUD_VALUE, dtype=np.float)
 weekdays_vol= np.full((NUM_STATIONS, len(DAYS_OF_WEEK)), 0, dtype=np.float)
+avrg_weekday_full= np.full((NUM_STATIONS, len(DAYS_OF_WEEK)), 0, dtype=np.float)
 
 station_index_decrement= 0 # this is a varying offset for the indexing of stations that accounts for missing stations that are being ignored
 for epoch_day_i in range(TOTAL_DAYS):
@@ -183,7 +185,7 @@ for epoch_day_i in range(TOTAL_DAYS):
     block= np.zeros((DATAPOINTS_PER_DAY, len(DAYS_OF_WEEK)), dtype=np.int)
     for block_i, sub_arr in enumerate(block):
         block[block_i][day_of_week]= 1
-    day_of_week[x_offset:x_offset + block.shape[0], y_offset:y_offset + block.shape[1]]= block
+    days_of_week[x_offset:x_offset + block.shape[0], y_offset:y_offset + block.shape[1]]= block
     
     for station in stations:
         #print("###### station.index: ", station.index)
@@ -240,9 +242,13 @@ for station in stations:
     y_offset= station.index - station_index_decrement
     for day_of_week_i in range(len(DAYS_OF_WEEK)):
         average_weekday_fullness[0:DATAPOINTS_PER_DAY, y_offset:y_offset+1, day_of_week_i:day_of_week_i+1]/= weekdays_vol[y_offset:y_offset+1, day_of_week_i:day_of_week_i+1]
+        avrg_weekday_full[y_offset:y_offset+1, day_of_week_i:day_of_week_i+1]= np.mean(average_weekday_fullness[0:DATAPOINTS_PER_DAY, y_offset:y_offset+1, day_of_week_i:day_of_week_i+1])
+
+print(avrg_weekday_full)
+# avrg_weekday_full= np.full((NUM_STATIONS, len(DAYS_OF_WEEK)), 0, dtype=np.float)
 
 
-# In[170]:
+# In[213]:
 
 
 # APPROACH DEFINITIONS
@@ -321,13 +327,13 @@ def run_baseline(station_name):
     for i in range(int((TOTAL_TIME_DATAPOINTS - max_train_time) / DATAPOINTS_PER_DAY)):
         datapoint_i= i * DATAPOINTS_PER_DAY
         day_of_week_i= int((max_train_time + datapoint_i) / DATAPOINTS_PER_DAY) % len(DAYS_OF_WEEK)
-        y_pred[datapoint_i:datapoint_i + DATAPOINTS_PER_DAY]= np.reshape(average_weekday_fullness[0:DATAPOINTS_PER_DAY, index:index+1, day_of_week_i:day_of_week_i+1], DATAPOINTS_PER_DAY)
+        y_pred[datapoint_i:datapoint_i + DATAPOINTS_PER_DAY]= (np.reshape(average_weekday_fullness[0:DATAPOINTS_PER_DAY, index:index+1, day_of_week_i:day_of_week_i+1], DATAPOINTS_PER_DAY) * (1 - HOMEMADE_REGULISER) + np.full(DATAPOINTS_PER_DAY, avrg_weekday_full[index:index+1, day_of_week_i:day_of_week_i+1]) * HOMEMADE_REGULISER)
 #     for val_i in range(y_pred.shape[0]):
 #         print("y_test:",y_test[val_i]," y_pred:",y_pred[val_i])
     print("R**2 accuracy: ", r2_score(y_test, y_pred) * 100, " %")
 
 
-# In[171]:
+# In[214]:
 
 
 # DRIVER
