@@ -150,7 +150,7 @@ for station_i, station in enumerate(stations):
                 last_percent_bikes= data_day.percent_bikes[val_i]
 
 
-# In[175]:
+# In[252]:
 
 
 # FEATURE DATA PREPERATION
@@ -166,6 +166,7 @@ hour_of_day= np.full((TOTAL_TIME_DATAPOINTS, HOURS), DUD_VALUE, dtype=np.float)
 average_weekday_fullness= np.full((DATAPOINTS_PER_DAY, NUM_STATIONS, len(DAYS_OF_WEEK)), DUD_VALUE, dtype=np.float)
 weekdays_vol= np.full((NUM_STATIONS, len(DAYS_OF_WEEK)), 0, dtype=np.float)
 avrg_weekday_full= np.full((NUM_STATIONS, len(DAYS_OF_WEEK)), 0, dtype=np.float)
+meanmean= np.full(NUM_STATIONS, 0, dtype=np.float)
 
 station_index_decrement= 0 # this is a varying offset for the indexing of stations that accounts for missing stations that are being ignored
 for epoch_day_i in range(TOTAL_DAYS):
@@ -243,12 +244,10 @@ for station in stations:
     for day_of_week_i in range(len(DAYS_OF_WEEK)):
         average_weekday_fullness[0:DATAPOINTS_PER_DAY, y_offset:y_offset+1, day_of_week_i:day_of_week_i+1]/= weekdays_vol[y_offset:y_offset+1, day_of_week_i:day_of_week_i+1]
         avrg_weekday_full[y_offset:y_offset+1, day_of_week_i:day_of_week_i+1]= np.mean(average_weekday_fullness[0:DATAPOINTS_PER_DAY, y_offset:y_offset+1, day_of_week_i:day_of_week_i+1])
-
-print(avrg_weekday_full)
-# avrg_weekday_full= np.full((NUM_STATIONS, len(DAYS_OF_WEEK)), 0, dtype=np.float)
+    meanmean[y_offset:y_offset+1]= np.mean(avrg_weekday_full[y_offset:y_offset+1])
 
 
-# In[216]:
+# In[256]:
 
 
 # APPROACH DEFINITIONS
@@ -321,7 +320,7 @@ def run_approach2(station_name):
     print('cv_scores mean:{}'.format(np.mean(cv_scores)))
     return np.mean(cv_scores)
 
-def run_baseline(station_name, regulariser_coef):
+def run_oldbaseline(station_name, regulariser_coef):
     index= get_station_id(station_name)
     max_train_time= DATAPOINTS_PER_DAY * DAYS_PER_WEEKDAY * len(DAYS_OF_WEEK)
     y_test= np.reshape(fullness[max_train_time:TOTAL_TIME_DATAPOINTS, index:index+1], TOTAL_TIME_DATAPOINTS - max_train_time)
@@ -335,42 +334,69 @@ def run_baseline(station_name, regulariser_coef):
     print("R**2 accuracy: ", r2_score(y_test, y_pred) * 100, " %")
     return r2_score(y_test, y_pred)
 
+def run_meanline(station_name):
+    index= get_station_id(station_name)
+    max_train_time= DATAPOINTS_PER_DAY * DAYS_PER_WEEKDAY * len(DAYS_OF_WEEK)
+    y_test= np.reshape(fullness[max_train_time:TOTAL_TIME_DATAPOINTS, index:index+1], TOTAL_TIME_DATAPOINTS - max_train_time)
+    y_pred= np.zeros(TOTAL_TIME_DATAPOINTS - max_train_time)
+    for i in range(int((TOTAL_TIME_DATAPOINTS - max_train_time) / DATAPOINTS_PER_DAY)):
+        datapoint_i= i * DATAPOINTS_PER_DAY
+        day_of_week_i= int((max_train_time + datapoint_i) / DATAPOINTS_PER_DAY) % len(DAYS_OF_WEEK)
+        y_pred[datapoint_i:datapoint_i + DATAPOINTS_PER_DAY]= np.full(DATAPOINTS_PER_DAY, meanmean[index:index+1], dtype=np.float64)
+#     for val_i in range(y_pred.shape[0]):
+#         print("y_test:",y_test[val_i]," y_pred:",y_pred[val_i])
+    print("R**2 accuracy: ", r2_score(y_test, y_pred) * 100, " %")
+    return r2_score(y_test, y_pred)
 
-# In[217]:
+
+# In[257]:
 
 
 # DRIVER
 
-run_baseline("PORTOBELLO ROAD", HOMEMADE_REGULISER)
+run_meanline("PORTOBELLO ROAD") # HOMEMADE_REGULISER
 print("--------------------")
-run_baseline("CUSTOM HOUSE QUAY", HOMEMADE_REGULISER)
+run_meanline("CUSTOM HOUSE QUAY")
 
 
-# In[233]:
+# In[268]:
 
 
 # #############################################################################
 # Baseline coef optimisation graph
 
-
+meanmean1= run_meanline("PORTOBELLO ROAD")
+meanmean2= run_meanline("CUSTOM HOUSE QUAY")
 coefs= np.linspace(0, 1, num=30)
 s1_r2= []
 s2_r2= []
+s1_r2meanmean= []
+s2_r2meanmean= []
 
 for coef in coefs:
-    s1_r2.append(run_baseline("PORTOBELLO ROAD", coef))
-    s2_r2.append(run_baseline("CUSTOM HOUSE QUAY", coef))
+    s1_r2.append(run_oldbaseline("PORTOBELLO ROAD", coef))
+    s2_r2.append(run_oldbaseline("CUSTOM HOUSE QUAY", coef))
+    s1_r2meanmean.append(meanmean1)
+    s2_r2meanmean.append(meanmean2)
 
 ax= plt.gca()
 
-ax.plot(coefs, s1_r2, label="Portobello Road")
-ax.plot(coefs, s2_r2, label="Custom House Quay")
+ax.plot(coefs, s1_r2, label="Portobello Road (baseline)", color="#F28C28")
+ax.plot(coefs, s1_r2meanmean, label="Portobello Road (mean)", color="#FAD5A5")
+ax.plot(coefs, s2_r2, label="Custom House Quay (baseline)", color="#0047AB")
+ax.plot(coefs, s2_r2meanmean, label="Custom House Quay (mean)", color="#A7C7E7")
 
 # Place a legend to the right of this smaller subplot.
 plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
 
-plt.xlabel('Coefficent for homemade regulariser')
+plt.xlabel('Baseline\'s coefficent for homemade regulariser')
 plt.ylabel('R**2 score')
 plt.title('Baseline model')
 plt.show()
+
+
+# In[ ]:
+
+
+
 

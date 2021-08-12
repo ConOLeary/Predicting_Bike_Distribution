@@ -1,5 +1,10 @@
 # Predicting_bike_distribution
 
+
+12 / 08 / 2021
+
+* Mean of training data suffices as baseline
+
 09 / 08 / 2021
 
 * Initial effort at a 'quick' baseline model is a complete flop. I certainly have ammendments in mind, but I am evaluating the added complexity of such and questioning if making them would render the baseline modal not baseline.
