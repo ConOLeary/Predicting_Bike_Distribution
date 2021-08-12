@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[227]:
+# In[ ]:
 
 
 # IMPORTS & DEFINITIONS
@@ -25,7 +25,7 @@ from sklearn.metrics import mean_squared_error
 
 DUD_VALUE= 0 # change from 0 to something like 123 for debugging
 EMPTY_DATA_DAY_VAL= 123456789
-TOTAL_ROWS= 9999999999
+TOTAL_ROWS= 999999
 INPUT_ROWS_LIMIT= TOTAL_ROWS # 500000
 FILENAME= 'dublinbikes_2020_Q1.csv'
 MAX_STATIONS= 118
@@ -150,7 +150,7 @@ for station_i, station in enumerate(stations):
                 last_percent_bikes= data_day.percent_bikes[val_i]
 
 
-# In[270]:
+# In[ ]:
 
 
 # FEATURE DATA PREPERATION
@@ -247,7 +247,7 @@ for station in stations:
     meanmean[y_offset:y_offset+1]= np.mean(avrg_weekday_full[y_offset:y_offset+1])
 
 
-# In[279]:
+# In[ ]:
 
 
 # APPROACH DEFINITIONS
@@ -285,9 +285,9 @@ def run_approach1(station_name):
         y_pred= regr.predict(X_test)
         score_sum+= regr.score(X_test, y_test)
         returns.append(regr.score(X_test, y_test))
-        print("R**2 score of data split", i, ": ", regr.score(X_test, y_test))
+        #print("R**2 score of data split", i, ": ", regr.score(X_test, y_test))
         i+= 1
-    print("\nAVERAGE R**2 score: ", score_sum / K)
+    #print("\nAVERAGE R**2 score: ", score_sum / K)
     return returns
     
 def run_approach2(station_name):
@@ -318,9 +318,9 @@ def run_approach2(station_name):
     
     neigh= KNeighborsRegressor(n_neighbors= 30, weights='distance')
     cv_scores= cross_val_score(neigh, X, y, cv=5)
-    print(cv_scores) # print each cv score (accuracy) and average them
-    print('cv_scores mean:{}'.format(np.mean(cv_scores)))
-    return np.mean(cv_scores)
+    #print(cv_scores) # print each cv score (accuracy) and average them
+    #print('cv_scores mean:{}'.format(np.mean(cv_scores)))
+    return cv_scores
 
 def run_oldbaseline(station_name, regulariser_coef):
     index= get_station_id(station_name)
@@ -333,12 +333,13 @@ def run_oldbaseline(station_name, regulariser_coef):
         y_pred[datapoint_i:datapoint_i + DATAPOINTS_PER_DAY]= (np.reshape(average_weekday_fullness[0:DATAPOINTS_PER_DAY, index:index+1, day_of_week_i:day_of_week_i+1], DATAPOINTS_PER_DAY) * (1 - regulariser_coef) + np.full(DATAPOINTS_PER_DAY, avrg_weekday_full[index:index+1, day_of_week_i:day_of_week_i+1]) * regulariser_coef)
 #     for val_i in range(y_pred.shape[0]):
 #         print("y_test:",y_test[val_i]," y_pred:",y_pred[val_i])
-    print("R**2 score: ", r2_score(y_test, y_pred))
+    #print("R**2 score: ", r2_score(y_test, y_pred))
     return r2_score(y_test, y_pred)
 
 def run_meanline(station_name):
     index= get_station_id(station_name)
     max_train_time= DATAPOINTS_PER_DAY * DAYS_PER_WEEKDAY * len(DAYS_OF_WEEK)
+    print("FOCUSED:",fullness[max_train_time:TOTAL_TIME_DATAPOINTS, index:index+1])
     y_test= np.reshape(fullness[max_train_time:TOTAL_TIME_DATAPOINTS, index:index+1], TOTAL_TIME_DATAPOINTS - max_train_time)
     y_pred= np.zeros(TOTAL_TIME_DATAPOINTS - max_train_time)
     for i in range(int((TOTAL_TIME_DATAPOINTS - max_train_time) / DATAPOINTS_PER_DAY)):
@@ -347,11 +348,13 @@ def run_meanline(station_name):
         y_pred[datapoint_i:datapoint_i + DATAPOINTS_PER_DAY]= np.full(DATAPOINTS_PER_DAY, meanmean[index:index+1], dtype=np.float64)
 #     for val_i in range(y_pred.shape[0]):
 #         print("y_test:",y_test[val_i]," y_pred:",y_pred[val_i])
-    print("R**2 score: ", r2_score(y_test, y_pred))
+    #print("R**2 score: ", r2_score(y_test, y_pred))
+    #print("y_pred:",y_pred)
+    #print("y_test:",y_test)
     return r2_score(y_test, y_pred)
 
 
-# In[325]:
+# In[ ]:
 
 
 def baseline_graph():
@@ -386,40 +389,48 @@ def baseline_graph():
 
 def compare_approaches(station_name1, station_name2, approach1, approach2):
     s1a1_r2s= []; s2a1_r2s= []; s1a2_r2s= []; s2a2_r2s= []
-    s1a1_r2s.append(approach1(station_name1, HOMEMADE_REGULISER))
-    s2a1_r2s.append(approach1(station_name2, HOMEMADE_REGULISER)) # add HOMEMADE_REGULISER if using run_oldbaseline
-    s1a2_r2s.append(approach2(station_name1))
-    s2a2_r2s.append(approach2(station_name2))
+    
+    val= [0.9154489426476711, 0.9321981853574037, 0.9033862664158813, 0.8607531451151377, 0.8425975287920906]#approach1(station_name1)
+    print("approach1(station_name1):", val)
+    if type(val) is list:
+        s1a1_r2s= sorted(val)
+    else:
+        s1a1_r2s.append(val); s1a1_r2s.append(val); s1a1_r2s.append(val); s1a1_r2s.append(val); s1a1_r2s.append(val)
+    
+    val= [0.77629295945547, 0.7949464686296777, 0.7967860515294295, 0.8358203281148665, 0.8471048354650209]#approach1(station_name2)
+    print("approach1(station_name2):", val)
+    if type(val) is list:
+        s2a1_r2s= sorted(val)
+    else:
+        s2a1_r2s.append(val); s2a1_r2s.append(val); s2a1_r2s.append(val); s2a1_r2s.append(val); s2a1_r2s.append(val)
+#########################################################################################################
+    val= approach2(station_name1)
+    print("approach2(station_name1):", val)
+    if type(val) is list:
+        s1a2_r2s= sorted(val)
+    else:
+        s1a2_r2s.append(val); s1a2_r2s.append(val); s1a2_r2s.append(val); s1a2_r2s.append(val); s1a2_r2s.append(val)
+    
+    val= approach2(station_name2)
+    print("approach2(station_name2):", val)
+    if type(val) is list:
+        s2a2_r2s= sorted(val)
+    else:
+        s2a2_r2s.append(val); s2a2_r2s.append(val); s2a2_r2s.append(val); s2a2_r2s.append(val); s2a2_r2s.append(val)
+    
+    print("s1a1_r2s:", s1a1_r2s)
+    print("s2a1_r2s:", s2a1_r2s)
+    print("s1a2_r2s:", s1a2_r2s)
+    print("s2a2_r2s:", s2a2_r2s)
     
     x= np.linspace(0, 1, num=K)
     
-    if len(s1a1_r2s) == 1: # nobody saw these manual instructions, okay?
-        s1a1_r2s.append(s1a1_r2s[0]); s1a1_r2s.append(s1a1_r2s[0]); s1a1_r2s.append(s1a1_r2s[0]); s1a1_r2s.append(s1a1_r2s[0])
-    else:
-        s1a1_r2s.sort()
-    if len(s2a1_r2s) == 1:
-        s2a1_r2s.append(s2a1_r2s[0]); s2a1_r2s.append(s2a1_r2s[0]); s2a1_r2s.append(s2a1_r2s[0]); s2a1_r2s.append(s2a1_r2s[0])
-    else:
-        s2a1_r2s.sort()
-    if len(s1a2_r2s) == 1:
-        s1a2_r2s.append(s1a2_r2s[0]); s1a2_r2s.append(s1a2_r2s[0]); s1a2_r2s.append(s1a2_r2s[0]); s1a2_r2s.append(s1a2_r2s[0])
-    else:
-        s1a2_r2s.sort()
-    if len(s2a2_r2s) == 1:
-        s2a2_r2s.append(s2a2_r2s[0]); s2a2_r2s.append(s2a2_r2s[0]); s2a2_r2s.append(s2a2_r2s[0]); s2a2_r2s.append(s2a2_r2s[0])
-    else:
-        s2a2_r2s.sort()
-    
     ax= plt.gca()
     
-    print("s1a1_r2s", s1a1_r2s)
-    print("s1a2_r2s", s1a2_r2s)
-    print("s2a1_r2s", s2a1_r2s)
-    print("s2a2_r2s", s2a2_r2s)
-    ax.plot(x, s1a1_r2s, label="Portobello Road Approach X", color="#F28C28")
-    ax.plot(x, s2a1_r2s, label="Custom House Quay Approach X", color="#FAD5A5")
-    ax.plot(x, s1a2_r2s, label="Portobello Road Approach Y", color="#0047AB")
-    ax.plot(x, s2a2_r2s, label="Custom House Quay Approach Y", color="#A7C7E7")
+    ax.plot(x, s1a1_r2s, label="Portobello Road; Approach 1", color="#F28C28")
+    ax.plot(x, s2a1_r2s, label="Custom House Quay; Approach 1", color="#FAD5A5")
+    ax.plot(x, s1a2_r2s, label="Portobello Road; Mean Approach", color="#0047AB")
+    ax.plot(x, s2a2_r2s, label="Custom House Quay; Mean Approach", color="#A7C7E7")
 
     # Place a legend to the right of this smaller subplot.
     plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
@@ -430,17 +441,11 @@ def compare_approaches(station_name1, station_name2, approach1, approach2):
     plt.show()
 
 
-# In[326]:
+# In[ ]:
 
 
 # DRIVER
 
-compare_approaches("PORTOBELLO ROAD", "CUSTOM HOUSE QUAY", run_oldbaseline, run_meanline)
+compare_approaches("PORTOBELLO ROAD", "CUSTOM HOUSE QUAY", run_approach1, run_meanline)
 print("--------------------")
-
-
-# In[ ]:
-
-
-
 
