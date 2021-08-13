@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[13]:
+# In[ ]:
 
 
 # IMPORTS & DEFINITIONS
@@ -23,6 +23,7 @@ from sklearn.metrics import r2_score
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.metrics import mean_squared_error
 from matplotlib.ticker import MaxNLocator
+from sklearn.preprocessing import MinMaxScaler
 
 DUD_VALUE= 0 # change from 0 to something like 123 for debugging
 EMPTY_DATA_DAY_VAL= 123456789
@@ -96,7 +97,7 @@ def get_station_id(name):
     return index
 
 
-# In[2]:
+# In[ ]:
 
 
 # DATA STRUCTURING
@@ -151,23 +152,27 @@ for station_i, station in enumerate(stations):
                 last_percent_bikes= data_day.percent_bikes[val_i]
 
 
-# In[3]:
+# In[ ]:
 
 
 # FEATURE DATA PREPERATION
 
-fullness= np.full((TOTAL_TIME_DATAPOINTS, NUM_STATIONS), DUD_VALUE, dtype=np.int)
 fullness_in10= np.full((TOTAL_TIME_DATAPOINTS, NUM_STATIONS), DUD_VALUE, dtype=np.int)
 fullness_in30= np.full((TOTAL_TIME_DATAPOINTS, NUM_STATIONS), DUD_VALUE, dtype=np.int)
 fullness_in60= np.full((TOTAL_TIME_DATAPOINTS, NUM_STATIONS), DUD_VALUE, dtype=np.int)
+
+fullness= np.full((TOTAL_TIME_DATAPOINTS, NUM_STATIONS), DUD_VALUE, dtype=np.int)
 fullness_percent= np.full((TOTAL_TIME_DATAPOINTS, NUM_STATIONS), DUD_VALUE, dtype=np.float)
 bikes_changes_pastx= np.full((TOTAL_TIME_DATAPOINTS, NUM_STATIONS, int(MAX_HINDSIGHT / DATAPOINT_EVERYX_MIN)), DUD_VALUE, dtype=np.int)
+
 days_of_week= np.full((TOTAL_TIME_DATAPOINTS, len(DAYS_OF_WEEK)), DUD_VALUE, dtype=np.int)
 hour_of_day= np.full((TOTAL_TIME_DATAPOINTS, HOURS), DUD_VALUE, dtype=np.float)
 average_weekday_fullness= np.full((DATAPOINTS_PER_DAY, NUM_STATIONS, len(DAYS_OF_WEEK)), DUD_VALUE, dtype=np.float)
 weekdays_vol= np.full((NUM_STATIONS, len(DAYS_OF_WEEK)), 0, dtype=np.float)
 avrg_weekday_full= np.full((NUM_STATIONS, len(DAYS_OF_WEEK)), 0, dtype=np.float)
 meanmean= np.full(NUM_STATIONS, 0, dtype=np.float)
+
+scld_bikes_changes_pastx= np.full((TOTAL_TIME_DATAPOINTS, NUM_STATIONS, int(MAX_HINDSIGHT / DATAPOINT_EVERYX_MIN)), 69, dtype=np.float)
 
 station_index_decrement= 0 # this is a varying offset for the indexing of stations that accounts for missing stations that are being ignored
 for epoch_day_i in range(TOTAL_DAYS):
@@ -247,8 +252,34 @@ for station in stations:
         avrg_weekday_full[y_offset:y_offset+1, day_of_week_i:day_of_week_i+1]= np.mean(average_weekday_fullness[0:DATAPOINTS_PER_DAY, y_offset:y_offset+1, day_of_week_i:day_of_week_i+1])
     meanmean[y_offset:y_offset+1]= np.mean(avrg_weekday_full[y_offset:y_offset+1])
 
+# fullness= np.full((TOTAL_TIME_DATAPOINTS, NUM_STATIONS), DUD_VALUE, dtype=np.int)
+# fullness_percent= np.full((TOTAL_TIME_DATAPOINTS, NUM_STATIONS), DUD_VALUE, dtype=np.float)
+# bikes_changes_pastx= np.full((TOTAL_TIME_DATAPOINTS, NUM_STATIONS, int(MAX_HINDSIGHT / DATAPOINT_EVERYX_MIN)), DUD_VALUE, dtype=np.int)
+# days_of_week= np.full((TOTAL_TIME_DATAPOINTS, len(DAYS_OF_WEEK)), DUD_VALUE, dtype=np.int)
+# hour_of_day= np.full((TOTAL_TIME_DATAPOINTS, HOURS), DUD_VALUE, dtype=np.float)
+# average_weekday_fullness= np.full((DATAPOINTS_PER_DAY, NUM_STATIONS, len(DAYS_OF_WEEK)), DUD_VALUE, dtype=np.float)
+# weekdays_vol= np.full((NUM_STATIONS, len(DAYS_OF_WEEK)), 0, dtype=np.float)
+# avrg_weekday_full= np.full((NUM_STATIONS, len(DAYS_OF_WEEK)), 0, dtype=np.float)
+# meanmean= np.full(NUM_STATIONS, 0, dtype=np.float)
 
-# In[21]:
+###########################################
+for station_i in range(bikes_changes_pastx.shape[1]):
+    print("################### STATION")
+    station_pastx= np.reshape(bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, station_i:station_i+1, 0:bikes_changes_pastx.shape[2]], (TOTAL_TIME_DATAPOINTS, bikes_changes_pastx.shape[2]))
+    one_column= station_pastx.reshape(-1, 1)
+    scaler= MinMaxScaler((-1, 1)).fit(one_column)
+    one_column= scaler.transform(one_column)
+    station_pastx= np.reshape(one_column, (station_pastx.shape[0], 1, station_pastx.shape[1]))
+    scld_bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, station_i:station_i+1, 0:bikes_changes_pastx.shape[2]]= station_pastx
+
+
+# In[ ]:
+
+
+print(range(bikes_changes_pastx.shape[1]))
+
+
+# In[ ]:
 
 
 # APPROACH DEFINITIONS
@@ -354,7 +385,7 @@ def run_meanline(station_name):
     return r2_score(y_test, y_pred)
 
 
-# In[34]:
+# In[ ]:
 
 
 def baseline_graph():
@@ -452,7 +483,7 @@ def compare_approaches(station_name1, station_name2, approach1, approach2, appro
     ax.plot(x, s2a2_r2s, label="Custom House Quay; Approach 2", color="#A7C7E7")
     if approach3 != None:
         ax.plot(x, s1a3_r2s, label="Portobello Road; Mean Approach", color="#026420")
-        ax.plot(x, s2a3_r2s, label="Custom House Quay; Mean Approach", color="#06f950")
+        ax.plot(x, s2a3_r2s, label="Custom House Quay; Mean Approach", color="#92CA91")
 
     # Place a legend to the right of this smaller subplot.
     plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
@@ -463,7 +494,7 @@ def compare_approaches(station_name1, station_name2, approach1, approach2, appro
     plt.show()
 
 
-# In[35]:
+# In[ ]:
 
 
 # DRIVER

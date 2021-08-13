@@ -4,6 +4,10 @@ See report: PredictDistribDublinBike.pdf
 
 ## Development Log
 
+13 / 08 / 2021
+
+* omg I wasn't normalising the features this whole time 😳
+
 12 / 08 / 2021
 
 * Mean of training data suffices as baseline
