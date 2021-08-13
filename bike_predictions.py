@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[13]:
 
 
 # IMPORTS & DEFINITIONS
@@ -22,10 +22,11 @@ from sklearn import linear_model
 from sklearn.metrics import r2_score
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.metrics import mean_squared_error
+from matplotlib.ticker import MaxNLocator
 
 DUD_VALUE= 0 # change from 0 to something like 123 for debugging
 EMPTY_DATA_DAY_VAL= 123456789
-TOTAL_ROWS= 999999
+TOTAL_ROWS= 999999999
 INPUT_ROWS_LIMIT= TOTAL_ROWS # 500000
 FILENAME= 'dublinbikes_2020_Q1.csv'
 MAX_STATIONS= 118
@@ -95,7 +96,7 @@ def get_station_id(name):
     return index
 
 
-# In[ ]:
+# In[2]:
 
 
 # DATA STRUCTURING
@@ -150,7 +151,7 @@ for station_i, station in enumerate(stations):
                 last_percent_bikes= data_day.percent_bikes[val_i]
 
 
-# In[ ]:
+# In[3]:
 
 
 # FEATURE DATA PREPERATION
@@ -247,7 +248,7 @@ for station in stations:
     meanmean[y_offset:y_offset+1]= np.mean(avrg_weekday_full[y_offset:y_offset+1])
 
 
-# In[ ]:
+# In[21]:
 
 
 # APPROACH DEFINITIONS
@@ -320,7 +321,7 @@ def run_approach2(station_name):
     cv_scores= cross_val_score(neigh, X, y, cv=5)
     #print(cv_scores) # print each cv score (accuracy) and average them
     #print('cv_scores mean:{}'.format(np.mean(cv_scores)))
-    return cv_scores
+    return cv_scores.tolist()
 
 def run_oldbaseline(station_name, regulariser_coef):
     index= get_station_id(station_name)
@@ -339,7 +340,6 @@ def run_oldbaseline(station_name, regulariser_coef):
 def run_meanline(station_name):
     index= get_station_id(station_name)
     max_train_time= DATAPOINTS_PER_DAY * DAYS_PER_WEEKDAY * len(DAYS_OF_WEEK)
-    print("FOCUSED:",fullness[max_train_time:TOTAL_TIME_DATAPOINTS, index:index+1])
     y_test= np.reshape(fullness[max_train_time:TOTAL_TIME_DATAPOINTS, index:index+1], TOTAL_TIME_DATAPOINTS - max_train_time)
     y_pred= np.zeros(TOTAL_TIME_DATAPOINTS - max_train_time)
     for i in range(int((TOTAL_TIME_DATAPOINTS - max_train_time) / DATAPOINTS_PER_DAY)):
@@ -354,7 +354,7 @@ def run_meanline(station_name):
     return r2_score(y_test, y_pred)
 
 
-# In[ ]:
+# In[34]:
 
 
 def baseline_graph():
@@ -387,8 +387,8 @@ def baseline_graph():
     plt.title('Baseline model')
     plt.show()
 
-def compare_approaches(station_name1, station_name2, approach1, approach2):
-    s1a1_r2s= []; s2a1_r2s= []; s1a2_r2s= []; s2a2_r2s= []
+def compare_approaches(station_name1, station_name2, approach1, approach2, approach3=None):
+    s1a1_r2s= []; s2a1_r2s= []; s1a2_r2s= []; s2a2_r2s= []; s1a3_r2s= []; s2a3_r2s= []
     
     val= [0.9154489426476711, 0.9321981853574037, 0.9033862664158813, 0.8607531451151377, 0.8425975287920906]#approach1(station_name1)
     print("approach1(station_name1):", val)
@@ -417,35 +417,63 @@ def compare_approaches(station_name1, station_name2, approach1, approach2):
         s2a2_r2s= sorted(val)
     else:
         s2a2_r2s.append(val); s2a2_r2s.append(val); s2a2_r2s.append(val); s2a2_r2s.append(val); s2a2_r2s.append(val)
+#########################################################################################################
+    if approach3 != None:
+        val= approach3(station_name1)
+        print("approach3(station_name1):", val)
+        if type(val) is list:
+            s1a3_r2s= sorted(val)
+        else:
+            s1a3_r2s.append(val); s1a3_r2s.append(val); s1a3_r2s.append(val); s1a3_r2s.append(val); s1a3_r2s.append(val)
+
+        val= approach3(station_name2)
+        print("approach3(station_name2):", val)
+        if type(val) is list:
+            s2a3_r2s= sorted(val)
+        else:
+            s2a3_r2s.append(val); s2a3_r2s.append(val); s2a3_r2s.append(val); s2a3_r2s.append(val); s2a3_r2s.append(val)
     
     print("s1a1_r2s:", s1a1_r2s)
     print("s2a1_r2s:", s2a1_r2s)
     print("s1a2_r2s:", s1a2_r2s)
     print("s2a2_r2s:", s2a2_r2s)
+    if approach3 != None:
+        print("s1a3_r2s:", s1a3_r2s)
+        print("s2a3_r2s:", s2a3_r2s)
     
-    x= np.linspace(0, 1, num=K)
+    x= np.linspace(1, 5, num=K, dtype=np.int)
     
     ax= plt.gca()
+    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
     
     ax.plot(x, s1a1_r2s, label="Portobello Road; Approach 1", color="#F28C28")
     ax.plot(x, s2a1_r2s, label="Custom House Quay; Approach 1", color="#FAD5A5")
-    ax.plot(x, s1a2_r2s, label="Portobello Road; Mean Approach", color="#0047AB")
-    ax.plot(x, s2a2_r2s, label="Custom House Quay; Mean Approach", color="#A7C7E7")
+    ax.plot(x, s1a2_r2s, label="Portobello Road; Approach 2", color="#0047AB")
+    ax.plot(x, s2a2_r2s, label="Custom House Quay; Approach 2", color="#A7C7E7")
+    if approach3 != None:
+        ax.plot(x, s1a3_r2s, label="Portobello Road; Mean Approach", color="#026420")
+        ax.plot(x, s2a3_r2s, label="Custom House Quay; Mean Approach", color="#06f950")
 
     # Place a legend to the right of this smaller subplot.
     plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
 
-    plt.xlabel('-')
-    plt.ylabel('R**2 score')
-    plt.title('Approach comparison')
+    plt.xlabel('Kth Fold')
+    plt.ylabel('R**2 Score')
+    plt.title('Approach Comparison')
     plt.show()
+
+
+# In[35]:
+
+
+# DRIVER
+
+compare_approaches("PORTOBELLO ROAD", "CUSTOM HOUSE QUAY", run_approach1, run_approach2, run_meanline)
+print("--------------------")
 
 
 # In[ ]:
 
 
-# DRIVER
 
-compare_approaches("PORTOBELLO ROAD", "CUSTOM HOUSE QUAY", run_approach1, run_meanline)
-print("--------------------")
 
