@@ -7,6 +7,7 @@ See report: PredictDistribDublinBike.pdf
 14 / 08 / 2021
 
 * normalisation led to know notable gainz
+* many of the results for versions of approach 1 are stored as comments in the compare_approaches function because they can take more than 10 minutes to calculate each
 
 13 / 08 / 2021
 

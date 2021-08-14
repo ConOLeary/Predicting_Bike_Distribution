@@ -276,7 +276,7 @@ for station_i in range(bikes_changes_pastx.shape[1]):
     scld_bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, station_i:station_i+1, 0:bikes_changes_pastx.shape[2]]= station_pastx
 
 
-# In[ ]:
+# In[19]:
 
 
 # APPROACH DEFINITIONS
@@ -295,12 +295,76 @@ def run_approach1(station_name):
     X[0:TOTAL_TIME_DATAPOINTS, 31:32]= scld_fullness_percent[0:TOTAL_TIME_DATAPOINTS, index:index + 1]
     X[0:TOTAL_TIME_DATAPOINTS, 32:33]= np.reshape((scld_bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index + 1, 0:1]), (TOTAL_TIME_DATAPOINTS, 1)) # past5
     X[0:TOTAL_TIME_DATAPOINTS, 33:34]= np.reshape((scld_bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index + 1, 1:2]), (TOTAL_TIME_DATAPOINTS, 1)) # past10
-    #X[0:TOTAL_TIME_DATAPOINTS, 34:35]= np.reshape((scld_bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index+1, 2:3]), (TOTAL_TIME_DATAPOINTS, 1)) # past15
-    #X[0:TOTAL_TIME_DATAPOINTS, 35:36]= np.reshape((scld_bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index+1, 3:4]), (TOTAL_TIME_DATAPOINTS, 1)) # past20
-    #X[0:TOTAL_TIME_DATAPOINTS, 36:37]= np.reshape((scld_bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index+1, 4:5]), (TOTAL_TIME_DATAPOINTS, 1)) # past25
-    # X[0:TOTAL_TIME_DATAPOINTS, 139:247]= np.reshape((scld_bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, 0:NUM_STATIONS, 0:1]), (TOTAL_TIME_DATAPOINTS, 1)) # past5
-    # X[0:TOTAL_TIME_DATAPOINTS, 247:355]= np.reshape((scld_bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, 0:NUM_STATIONS, 2:3]), (TOTAL_TIME_DATAPOINTS, 1)) # past15
-    # X[0:TOTAL_TIME_DATAPOINTS, 355:463]= np.reshape((scld_bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, 0:NUM_STATIONS, 8:9]), (TOTAL_TIME_DATAPOINTS, 1)) # past45
+    
+    kf= KFold(n_splits= K)
+    kf.get_n_splits(X)
+    score_sum= 0.0
+    i= 1
+    returns= []
+    for train_index, test_index in kf.split(X):
+        X_train, X_test= X[train_index], X[test_index]
+        y_train, y_test= y[train_index], y[test_index]
+        regr= MLPRegressor(random_state= 1, max_iter= 1000, alpha=0.001).fit(X_train, y_train)
+        y_pred= regr.predict(X_test)
+        score_sum+= regr.score(X_test, y_test)
+        returns.append(regr.score(X_test, y_test))
+        #print("R**2 score of data split", i, ": ", regr.score(X_test, y_test))
+        i+= 1
+    #print("\nAVERAGE R**2 score: ", score_sum / K)
+    return returns
+
+def run_approach1v2(station_name):
+    index= get_station_id(station_name)
+    
+    y= np.full((TOTAL_TIME_DATAPOINTS, 3), 0, dtype=np.int) # change the 3 to a 6 to do both stations at once on the generalised-training form of an approach
+    y[0:TOTAL_TIME_DATAPOINTS, 0:1]= np.reshape(fullness_in10[:,index], (TOTAL_TIME_DATAPOINTS, 1))
+    y[0:TOTAL_TIME_DATAPOINTS, 1:2]= np.reshape(fullness_in30[:,index], (TOTAL_TIME_DATAPOINTS, 1))
+    y[0:TOTAL_TIME_DATAPOINTS, 2:3]= np.reshape(fullness_in60[:,index], (TOTAL_TIME_DATAPOINTS, 1))
+    
+    X= np.full((TOTAL_TIME_DATAPOINTS, hour_of_day.shape[1] + days_of_week.shape[1] + 6                 + 0 * NUM_STATIONS                ), 0, dtype=np.float)
+    X[0:TOTAL_TIME_DATAPOINTS, 0:7]= day_of_week
+    X[0:TOTAL_TIME_DATAPOINTS, 7:31]= hour_of_day
+    X[0:TOTAL_TIME_DATAPOINTS, 31:32]= scld_fullness_percent[0:TOTAL_TIME_DATAPOINTS, index:index + 1]
+    X[0:TOTAL_TIME_DATAPOINTS, 32:33]= np.reshape((scld_bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index+1, 0:1]), (TOTAL_TIME_DATAPOINTS, 1)) # past5
+    X[0:TOTAL_TIME_DATAPOINTS, 33:34]= np.reshape((scld_bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index+1, 1:2]), (TOTAL_TIME_DATAPOINTS, 1)) # past10
+    X[0:TOTAL_TIME_DATAPOINTS, 34:35]= np.reshape((scld_bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index+1, 2:3]), (TOTAL_TIME_DATAPOINTS, 1)) # past15
+    X[0:TOTAL_TIME_DATAPOINTS, 35:36]= np.reshape((scld_bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index+1, 3:4]), (TOTAL_TIME_DATAPOINTS, 1)) # past20
+    X[0:TOTAL_TIME_DATAPOINTS, 36:37]= np.reshape((scld_bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index+1, 4:5]), (TOTAL_TIME_DATAPOINTS, 1)) # past25
+
+    kf= KFold(n_splits= K)
+    kf.get_n_splits(X)
+    score_sum= 0.0
+    i= 1
+    returns= []
+    for train_index, test_index in kf.split(X):
+        X_train, X_test= X[train_index], X[test_index]
+        y_train, y_test= y[train_index], y[test_index]
+        regr= MLPRegressor(random_state= 1, max_iter= 1000, alpha=0.001).fit(X_train, y_train)
+        y_pred= regr.predict(X_test)
+        score_sum+= regr.score(X_test, y_test)
+        returns.append(regr.score(X_test, y_test))
+        #print("R**2 score of data split", i, ": ", regr.score(X_test, y_test))
+        i+= 1
+    #print("\nAVERAGE R**2 score: ", score_sum / K)
+    return returns
+
+def run_approach1v3(station_name):
+    index= get_station_id(station_name)
+    
+    y= np.full((TOTAL_TIME_DATAPOINTS, 3), 0, dtype=np.int) # change the 3 to a 6 to do both stations at once on the generalised-training form of an approach
+    y[0:TOTAL_TIME_DATAPOINTS, 0:1]= np.reshape(fullness_in10[:,index], (TOTAL_TIME_DATAPOINTS, 1))
+    y[0:TOTAL_TIME_DATAPOINTS, 1:2]= np.reshape(fullness_in30[:,index], (TOTAL_TIME_DATAPOINTS, 1))
+    y[0:TOTAL_TIME_DATAPOINTS, 2:3]= np.reshape(fullness_in60[:,index], (TOTAL_TIME_DATAPOINTS, 1))
+    
+    X= np.full((TOTAL_TIME_DATAPOINTS, hour_of_day.shape[1] + days_of_week.shape[1] + 2                 + 4 * NUM_STATIONS                ), 0, dtype=np.float)
+    X[0:TOTAL_TIME_DATAPOINTS, 0:7]= day_of_week
+    X[0:TOTAL_TIME_DATAPOINTS, 7:31]= hour_of_day
+    X[0:TOTAL_TIME_DATAPOINTS, 31:32]= scld_fullness_percent[0:TOTAL_TIME_DATAPOINTS, index:index + 1]
+    X[0:TOTAL_TIME_DATAPOINTS, 32:33]= np.reshape((scld_bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index + 1, 0:1]), (TOTAL_TIME_DATAPOINTS, 1)) # past5
+    X[0:TOTAL_TIME_DATAPOINTS, 33:141]= np.reshape((scld_bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, 0:NUM_STATIONS, 1:2]), (TOTAL_TIME_DATAPOINTS, NUM_STATIONS)) # past10
+    X[0:TOTAL_TIME_DATAPOINTS, 141:249]= np.reshape((scld_bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, 0:NUM_STATIONS, 2:3]), (TOTAL_TIME_DATAPOINTS, NUM_STATIONS)) # past15
+    X[0:TOTAL_TIME_DATAPOINTS, 249:357]= np.reshape((scld_bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, 0:NUM_STATIONS, 3:4]), (TOTAL_TIME_DATAPOINTS, NUM_STATIONS)) # past20
+    X[0:TOTAL_TIME_DATAPOINTS, 357:465]= np.reshape((scld_bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, 0:NUM_STATIONS, 4:5]), (TOTAL_TIME_DATAPOINTS, NUM_STATIONS)) # past25
 
     kf= KFold(n_splits= K)
     kf.get_n_splits(X)
@@ -377,7 +441,7 @@ def run_meanline(station_name):
     return r2_score(y_test, y_pred)
 
 
-# In[ ]:
+# In[24]:
 
 
 def baseline_graph():
@@ -413,28 +477,28 @@ def baseline_graph():
 def compare_approaches(station_name1, station_name2, approach1, approach2, approach3=None):
     s1a1_r2s= []; s2a1_r2s= []; s1a2_r2s= []; s2a2_r2s= []; s1a3_r2s= []; s2a3_r2s= []
     
-    val= approach1(station_name1) #[0.9154489426476711, 0.9321981853574037, 0.9033862664158813, 0.8607531451151377, 0.8425975287920906]#approach1(station_name1)
+    val= [0.8544876302212273, 0.9103206998138718, 0.9156765327292385, 0.9162074563960463, 0.9386270881532218]#approach1(station_name1) #[0.9154489426476711, 0.9321981853574037, 0.9033862664158813, 0.8607531451151377, 0.8425975287920906]#approach1(station_name1)
     print("approach1(station_name1):", val)
     if type(val) is list:
         s1a1_r2s= sorted(val)
     else:
         s1a1_r2s.append(val); s1a1_r2s.append(val); s1a1_r2s.append(val); s1a1_r2s.append(val); s1a1_r2s.append(val)
     
-    val= approach1(station_name2) #[0.77629295945547, 0.7949464686296777, 0.7967860515294295, 0.8358203281148665, 0.8471048354650209]#approach1(station_name2)
+    val= [0.795526303673726, 0.8143441006746407, 0.8204766460302203, 0.8615393834469698, 0.788609683100724]#approach1(station_name2) #[0.77629295945547, 0.7949464686296777, 0.7967860515294295, 0.8358203281148665, 0.8471048354650209]#approach1(station_name2)
     print("approach1(station_name2):", val)
     if type(val) is list:
         s2a1_r2s= sorted(val)
     else:
         s2a1_r2s.append(val); s2a1_r2s.append(val); s2a1_r2s.append(val); s2a1_r2s.append(val); s2a1_r2s.append(val)
 #########################################################################################################
-    val= approach2(station_name1)
+    val= [0.9190271650242875, 0.9420657457918499, 0.9146759986093368, 0.917653317897591, 0.8564092920020631]#approach2(station_name1)
     print("approach2(station_name1):", val)
     if type(val) is list:
         s1a2_r2s= sorted(val)
     else:
         s1a2_r2s.append(val); s1a2_r2s.append(val); s1a2_r2s.append(val); s1a2_r2s.append(val); s1a2_r2s.append(val)
     
-    val= approach2(station_name2)
+    val= [0.7972544574987751, 0.8143952998700232, 0.8189551156559984, 0.8623204399472701, 0.7940865400569425]#approach2(station_name2)
     print("approach2(station_name2):", val)
     if type(val) is list:
         s2a2_r2s= sorted(val)
@@ -442,14 +506,14 @@ def compare_approaches(station_name1, station_name2, approach1, approach2, appro
         s2a2_r2s.append(val); s2a2_r2s.append(val); s2a2_r2s.append(val); s2a2_r2s.append(val); s2a2_r2s.append(val)
 #########################################################################################################
     if approach3 != None:
-        val= approach3(station_name1)
+        val= [0.8701196589704495, 0.9032181011324892, 0.8744269239638829, 0.8873912710329473, 0.843289038452534]#approach3(station_name1)
         print("approach3(station_name1):", val)
         if type(val) is list:
             s1a3_r2s= sorted(val)
         else:
             s1a3_r2s.append(val); s1a3_r2s.append(val); s1a3_r2s.append(val); s1a3_r2s.append(val); s1a3_r2s.append(val)
 
-        val= approach3(station_name2)
+        val= [0.6209740089315421, 0.7218889672070009, 0.7274194072782662, 0.7765443329528768, 0.7200027086352144]#approach3(station_name2)
         print("approach3(station_name2):", val)
         if type(val) is list:
             s2a3_r2s= sorted(val)
@@ -471,11 +535,11 @@ def compare_approaches(station_name1, station_name2, approach1, approach2, appro
     
     ax.plot(x, s1a1_r2s, label="Portobello Road; Approach 1", color="#F28C28")
     ax.plot(x, s2a1_r2s, label="Custom House Quay; Approach 1", color="#FAD5A5")
-    ax.plot(x, s1a2_r2s, label="Portobello Road; Approach 2", color="#0047AB")
-    ax.plot(x, s2a2_r2s, label="Custom House Quay; Approach 2", color="#A7C7E7")
+    ax.plot(x, s1a2_r2s, label="Portobello Road; Approach 1v2", color="#0047AB")
+    ax.plot(x, s2a2_r2s, label="Custom House Quay; Approach 1v2", color="#A7C7E7")
     if approach3 != None:
-        ax.plot(x, s1a3_r2s, label="Portobello Road; Mean Approach", color="#026420")
-        ax.plot(x, s2a3_r2s, label="Custom House Quay; Mean Approach", color="#92CA91")
+        ax.plot(x, s1a3_r2s, label="Portobello Road; Approach 1v3", color="#026420")
+        ax.plot(x, s2a3_r2s, label="Custom House Quay; Approach 1v3", color="#92CA91")
 
     # Place a legend to the right of this smaller subplot.
     plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
@@ -486,12 +550,12 @@ def compare_approaches(station_name1, station_name2, approach1, approach2, appro
     plt.show()
 
 
-# In[ ]:
+# In[25]:
 
 
 # DRIVER
 
-compare_approaches("PORTOBELLO ROAD", "CUSTOM HOUSE QUAY", run_approach1, run_approach2, run_meanline)
+compare_approaches("PORTOBELLO ROAD", "CUSTOM HOUSE QUAY", run_approach1, run_approach1v2, run_approach1v3)
 print("--------------------")
 
 
