@@ -152,7 +152,7 @@ for station_i, station in enumerate(stations):
                 last_percent_bikes= data_day.percent_bikes[val_i]
 
 
-# In[ ]:
+# In[63]:
 
 
 # FEATURE DATA PREPERATION
@@ -260,7 +260,7 @@ for station in stations:
 
 ###########################################
 for station_i in range(bikes_changes_pastx.shape[1]):
-    print("################### STATION")
+    #print("################### STATION")
     station_fullness= np.reshape(fullness_percent[0:TOTAL_TIME_DATAPOINTS, station_i:station_i+1], TOTAL_TIME_DATAPOINTS)
     one_column= station_fullness.reshape(-1, 1)
     scaler= MinMaxScaler((0, 1)).fit(one_column)
@@ -276,7 +276,7 @@ for station_i in range(bikes_changes_pastx.shape[1]):
     scld_bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, station_i:station_i+1, 0:bikes_changes_pastx.shape[2]]= station_pastx
 
 
-# In[19]:
+# In[64]:
 
 
 # APPROACH DEFINITIONS
@@ -383,7 +383,7 @@ def run_approach1v3(station_name):
     #print("\nAVERAGE R**2 score: ", score_sum / K)
     return returns
     
-def run_approach2(station_name):
+def run_approach2(station_name, neighs= 35):
     index= get_station_id(station_name)
     
     y= np.full((TOTAL_TIME_DATAPOINTS, 3), 0, dtype=np.int) # change the 3 to a 6 to do both stations at once on the generalised-training form of an approach
@@ -410,7 +410,7 @@ def run_approach2(station_name):
     # X[0:TOTAL_TIME_DATAPOINTS, 2:110]= bikes_changes_past5
     # X[0:TOTAL_TIME_DATAPOINTS, 110:218]= bikes_changes_past15
     
-    neigh= KNeighborsRegressor(n_neighbors= 30, weights='distance')
+    neigh= KNeighborsRegressor(n_neighbors= neighs, weights='distance')
     cv_scores= cross_val_score(neigh, X, y, cv=5)
     #print(cv_scores) # print each cv score (accuracy) and average them
     #print('cv_scores mean:{}'.format(np.mean(cv_scores)))
@@ -441,13 +441,14 @@ def run_meanline(station_name):
     return r2_score(y_test, y_pred)
 
 
-# In[24]:
+# In[79]:
 
 
 def baseline_graph():
     meanmean1= run_meanline("PORTOBELLO ROAD")
     meanmean2= run_meanline("CUSTOM HOUSE QUAY")
     coefs= np.linspace(0, 1, num=30)
+    
     s1_r2= []
     s2_r2= []
     s1_r2meanmean= []
@@ -466,12 +467,31 @@ def baseline_graph():
     ax.plot(coefs, s2_r2, label="Custom House Quay (baseline)", color="#0047AB")
     ax.plot(coefs, s2_r2meanmean, label="Custom House Quay (mean)", color="#A7C7E7")
 
-    # Place a legend to the right of this smaller subplot.
     plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
 
     plt.xlabel('Baseline\'s coefficent for homemade regulariser')
     plt.ylabel('R**2 score')
     plt.title('Baseline model')
+    plt.show()
+    
+def neighbours_optimisation(station_name1, station_name2):
+    xs= [int(x) for x in np.linspace(1, 100, num=20)]
+    y1s= []; y2s= []
+    for x in xs:
+        returns= run_approach2(station_name1, x)
+        y1s.append(sum(returns) / len(returns))
+        returns= run_approach2(station_name2, x)
+        y2s.append(sum(returns) / len(returns))
+    ax= plt.gca()
+    
+    ax.plot(xs, y1s, label=station_name1, color="#F28C28")
+    ax.plot(xs, y2s, label=station_name2, color="#0047AB")
+
+    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
+
+    plt.xlabel('Number of neighbours')
+    plt.ylabel('R**2 score')
+    plt.title('Optimising n_neighbours')
     plt.show()
 
 def compare_approaches(station_name1, station_name2, approach1, approach2, approach3=None):
@@ -541,7 +561,6 @@ def compare_approaches(station_name1, station_name2, approach1, approach2, appro
         ax.plot(x, s1a3_r2s, label="Portobello Road; Approach 1v3", color="#026420")
         ax.plot(x, s2a3_r2s, label="Custom House Quay; Approach 1v3", color="#92CA91")
 
-    # Place a legend to the right of this smaller subplot.
     plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
 
     plt.xlabel('Kth Fold')
@@ -550,12 +569,12 @@ def compare_approaches(station_name1, station_name2, approach1, approach2, appro
     plt.show()
 
 
-# In[25]:
+# In[80]:
 
 
 # DRIVER
 
-compare_approaches("PORTOBELLO ROAD", "CUSTOM HOUSE QUAY", run_approach1, run_approach1v2, run_approach1v3)
+neighbours_optimisation("PORTOBELLO ROAD", "CUSTOM HOUSE QUAY")
 print("--------------------")
 
 
