@@ -160,11 +160,10 @@ for station_i, station in enumerate(stations):
 fullness_in10= np.full((TOTAL_TIME_DATAPOINTS, NUM_STATIONS), DUD_VALUE, dtype=np.int)
 fullness_in30= np.full((TOTAL_TIME_DATAPOINTS, NUM_STATIONS), DUD_VALUE, dtype=np.int)
 fullness_in60= np.full((TOTAL_TIME_DATAPOINTS, NUM_STATIONS), DUD_VALUE, dtype=np.int)
-
 fullness= np.full((TOTAL_TIME_DATAPOINTS, NUM_STATIONS), DUD_VALUE, dtype=np.int)
+
 fullness_percent= np.full((TOTAL_TIME_DATAPOINTS, NUM_STATIONS), DUD_VALUE, dtype=np.float)
 bikes_changes_pastx= np.full((TOTAL_TIME_DATAPOINTS, NUM_STATIONS, int(MAX_HINDSIGHT / DATAPOINT_EVERYX_MIN)), DUD_VALUE, dtype=np.int)
-
 days_of_week= np.full((TOTAL_TIME_DATAPOINTS, len(DAYS_OF_WEEK)), DUD_VALUE, dtype=np.int)
 hour_of_day= np.full((TOTAL_TIME_DATAPOINTS, HOURS), DUD_VALUE, dtype=np.float)
 average_weekday_fullness= np.full((DATAPOINTS_PER_DAY, NUM_STATIONS, len(DAYS_OF_WEEK)), DUD_VALUE, dtype=np.float)
@@ -172,7 +171,10 @@ weekdays_vol= np.full((NUM_STATIONS, len(DAYS_OF_WEEK)), 0, dtype=np.float)
 avrg_weekday_full= np.full((NUM_STATIONS, len(DAYS_OF_WEEK)), 0, dtype=np.float)
 meanmean= np.full(NUM_STATIONS, 0, dtype=np.float)
 
-scld_bikes_changes_pastx= np.full((TOTAL_TIME_DATAPOINTS, NUM_STATIONS, int(MAX_HINDSIGHT / DATAPOINT_EVERYX_MIN)), 69, dtype=np.float)
+scld_fullness_percent= np.full((TOTAL_TIME_DATAPOINTS, NUM_STATIONS), DUD_VALUE, dtype=np.float)
+scld_bikes_changes_pastx= np.full((TOTAL_TIME_DATAPOINTS, NUM_STATIONS, int(MAX_HINDSIGHT / DATAPOINT_EVERYX_MIN)), 0, dtype=np.float)
+scld_days_of_week= np.full((TOTAL_TIME_DATAPOINTS, len(DAYS_OF_WEEK)), DUD_VALUE, dtype=np.int)
+scld_hour_of_week= np.full((TOTAL_TIME_DATAPOINTS, HOURS), DUD_VALUE, dtype=np.float)
 
 station_index_decrement= 0 # this is a varying offset for the indexing of stations that accounts for missing stations that are being ignored
 for epoch_day_i in range(TOTAL_DAYS):
@@ -252,31 +254,26 @@ for station in stations:
         avrg_weekday_full[y_offset:y_offset+1, day_of_week_i:day_of_week_i+1]= np.mean(average_weekday_fullness[0:DATAPOINTS_PER_DAY, y_offset:y_offset+1, day_of_week_i:day_of_week_i+1])
     meanmean[y_offset:y_offset+1]= np.mean(avrg_weekday_full[y_offset:y_offset+1])
 
-# fullness= np.full((TOTAL_TIME_DATAPOINTS, NUM_STATIONS), DUD_VALUE, dtype=np.int)
-# fullness_percent= np.full((TOTAL_TIME_DATAPOINTS, NUM_STATIONS), DUD_VALUE, dtype=np.float)
-# bikes_changes_pastx= np.full((TOTAL_TIME_DATAPOINTS, NUM_STATIONS, int(MAX_HINDSIGHT / DATAPOINT_EVERYX_MIN)), DUD_VALUE, dtype=np.int)
-# days_of_week= np.full((TOTAL_TIME_DATAPOINTS, len(DAYS_OF_WEEK)), DUD_VALUE, dtype=np.int)
-# hour_of_day= np.full((TOTAL_TIME_DATAPOINTS, HOURS), DUD_VALUE, dtype=np.float)
-# average_weekday_fullness= np.full((DATAPOINTS_PER_DAY, NUM_STATIONS, len(DAYS_OF_WEEK)), DUD_VALUE, dtype=np.float)
-# weekdays_vol= np.full((NUM_STATIONS, len(DAYS_OF_WEEK)), 0, dtype=np.float)
-# avrg_weekday_full= np.full((NUM_STATIONS, len(DAYS_OF_WEEK)), 0, dtype=np.float)
-# meanmean= np.full(NUM_STATIONS, 0, dtype=np.float)
+# scld_fullness_percent= np.full((TOTAL_TIME_DATAPOINTS, NUM_STATIONS), DUD_VALUE, dtype=np.float)
+# scld_bikes_changes_pastx= np.full((TOTAL_TIME_DATAPOINTS, NUM_STATIONS, int(MAX_HINDSIGHT / DATAPOINT_EVERYX_MIN)), 0, dtype=np.float)
+# scld_hour_of_week= np.full((TOTAL_TIME_DATAPOINTS, HOURS), DUD_VALUE, dtype=np.float)
 
 ###########################################
 for station_i in range(bikes_changes_pastx.shape[1]):
     print("################### STATION")
+    station_fullness= np.reshape(fullness_percent[0:TOTAL_TIME_DATAPOINTS, station_i:station_i+1], TOTAL_TIME_DATAPOINTS)
+    one_column= station_fullness.reshape(-1, 1)
+    scaler= MinMaxScaler((0, 1)).fit(one_column)
+    one_column= scaler.transform(one_column)
+    station_fullness= np.reshape(one_column, (station_fullness.shape[0], 1))
+    scld_fullness_percent[0:TOTAL_TIME_DATAPOINTS, station_i:station_i+1]= station_fullness
+    
     station_pastx= np.reshape(bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, station_i:station_i+1, 0:bikes_changes_pastx.shape[2]], (TOTAL_TIME_DATAPOINTS, bikes_changes_pastx.shape[2]))
     one_column= station_pastx.reshape(-1, 1)
     scaler= MinMaxScaler((-1, 1)).fit(one_column)
     one_column= scaler.transform(one_column)
     station_pastx= np.reshape(one_column, (station_pastx.shape[0], 1, station_pastx.shape[1]))
     scld_bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, station_i:station_i+1, 0:bikes_changes_pastx.shape[2]]= station_pastx
-
-
-# In[ ]:
-
-
-print(range(bikes_changes_pastx.shape[1]))
 
 
 # In[ ]:
@@ -295,15 +292,15 @@ def run_approach1(station_name):
     X= np.full((TOTAL_TIME_DATAPOINTS, hour_of_day.shape[1] + days_of_week.shape[1] + 3                 + 0 * NUM_STATIONS                ), 0, dtype=np.float)
     X[0:TOTAL_TIME_DATAPOINTS, 0:7]= day_of_week
     X[0:TOTAL_TIME_DATAPOINTS, 7:31]= hour_of_day
-    X[0:TOTAL_TIME_DATAPOINTS, 31:32]= fullness_percent[0:TOTAL_TIME_DATAPOINTS, index:index + 1]
-    X[0:TOTAL_TIME_DATAPOINTS, 32:33]= np.reshape((bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index + 1, 0:1]), (TOTAL_TIME_DATAPOINTS, 1)) # past5
-    X[0:TOTAL_TIME_DATAPOINTS, 33:34]= np.reshape((bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index + 1, 1:2]), (TOTAL_TIME_DATAPOINTS, 1)) # past10
-    #X[0:TOTAL_TIME_DATAPOINTS, 34:35]= np.reshape((bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index+1, 2:3]), (TOTAL_TIME_DATAPOINTS, 1)) # past15
-    #X[0:TOTAL_TIME_DATAPOINTS, 35:36]= np.reshape((bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index+1, 3:4]), (TOTAL_TIME_DATAPOINTS, 1)) # past20
-    #X[0:TOTAL_TIME_DATAPOINTS, 36:37]= np.reshape((bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index+1, 4:5]), (TOTAL_TIME_DATAPOINTS, 1)) # past25
-    # X[0:TOTAL_TIME_DATAPOINTS, 139:247]= np.reshape((bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, 0:NUM_STATIONS, 0:1]), (TOTAL_TIME_DATAPOINTS, 1)) # past5
-    # X[0:TOTAL_TIME_DATAPOINTS, 247:355]= np.reshape((bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, 0:NUM_STATIONS, 2:3]), (TOTAL_TIME_DATAPOINTS, 1)) # past15
-    # X[0:TOTAL_TIME_DATAPOINTS, 355:463]= np.reshape((bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, 0:NUM_STATIONS, 8:9]), (TOTAL_TIME_DATAPOINTS, 1)) # past45
+    X[0:TOTAL_TIME_DATAPOINTS, 31:32]= scld_fullness_percent[0:TOTAL_TIME_DATAPOINTS, index:index + 1]
+    X[0:TOTAL_TIME_DATAPOINTS, 32:33]= np.reshape((scld_bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index + 1, 0:1]), (TOTAL_TIME_DATAPOINTS, 1)) # past5
+    X[0:TOTAL_TIME_DATAPOINTS, 33:34]= np.reshape((scld_bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index + 1, 1:2]), (TOTAL_TIME_DATAPOINTS, 1)) # past10
+    #X[0:TOTAL_TIME_DATAPOINTS, 34:35]= np.reshape((scld_bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index+1, 2:3]), (TOTAL_TIME_DATAPOINTS, 1)) # past15
+    #X[0:TOTAL_TIME_DATAPOINTS, 35:36]= np.reshape((scld_bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index+1, 3:4]), (TOTAL_TIME_DATAPOINTS, 1)) # past20
+    #X[0:TOTAL_TIME_DATAPOINTS, 36:37]= np.reshape((scld_bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index+1, 4:5]), (TOTAL_TIME_DATAPOINTS, 1)) # past25
+    # X[0:TOTAL_TIME_DATAPOINTS, 139:247]= np.reshape((scld_bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, 0:NUM_STATIONS, 0:1]), (TOTAL_TIME_DATAPOINTS, 1)) # past5
+    # X[0:TOTAL_TIME_DATAPOINTS, 247:355]= np.reshape((scld_bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, 0:NUM_STATIONS, 2:3]), (TOTAL_TIME_DATAPOINTS, 1)) # past15
+    # X[0:TOTAL_TIME_DATAPOINTS, 355:463]= np.reshape((scld_bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, 0:NUM_STATIONS, 8:9]), (TOTAL_TIME_DATAPOINTS, 1)) # past45
 
     kf= KFold(n_splits= K)
     kf.get_n_splits(X)
@@ -330,7 +327,7 @@ def run_approach2(station_name):
     y[0:TOTAL_TIME_DATAPOINTS, 1:2]= np.reshape(fullness_in30[:,index], (TOTAL_TIME_DATAPOINTS, 1))
     y[0:TOTAL_TIME_DATAPOINTS, 2:3]= np.reshape(fullness_in60[:,index], (TOTAL_TIME_DATAPOINTS, 1))
     
-    X= np.full((TOTAL_TIME_DATAPOINTS, 2 + 2             #* bikes_changes_pastx.shape[1] \ # This line is uncommented when training on all stations
+    X= np.full((TOTAL_TIME_DATAPOINTS, 2 + 3             #* bikes_changes_pastx.shape[1] \ # This line is uncommented when training on all stations
            ), -1, dtype=np.float)
     
     positions= []; t= 0
@@ -343,8 +340,9 @@ def run_approach2(station_name):
         X[time_i, 1]= positions[pos_i][1]
         pos_i= (pos_i + 1) % len(positions)
     
-    X[0:TOTAL_TIME_DATAPOINTS, 2:3]= fullness_percent[0:TOTAL_TIME_DATAPOINTS, index:index+1]
-    X[0:TOTAL_TIME_DATAPOINTS, 3:4]= np.reshape((bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index+1, 0:1]), (TOTAL_TIME_DATAPOINTS, 1)) # past5
+    X[0:TOTAL_TIME_DATAPOINTS, 2:3]= scld_fullness_percent[0:TOTAL_TIME_DATAPOINTS, index:index+1]
+    X[0:TOTAL_TIME_DATAPOINTS, 3:4]= np.reshape((scld_bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index+1, 0:1]), (TOTAL_TIME_DATAPOINTS, 1)) # past5
+    X[0:TOTAL_TIME_DATAPOINTS, 4:5]= np.reshape((scld_bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, index:index+1, 1:2]), (TOTAL_TIME_DATAPOINTS, 1)) # past5
     # X[0:TOTAL_TIME_DATAPOINTS, 2:110]= bikes_changes_past5
     # X[0:TOTAL_TIME_DATAPOINTS, 110:218]= bikes_changes_past15
     
@@ -363,8 +361,6 @@ def run_oldbaseline(station_name, regulariser_coef):
         datapoint_i= i * DATAPOINTS_PER_DAY
         day_of_week_i= int((max_train_time + datapoint_i) / DATAPOINTS_PER_DAY) % len(DAYS_OF_WEEK)
         y_pred[datapoint_i:datapoint_i + DATAPOINTS_PER_DAY]= (np.reshape(average_weekday_fullness[0:DATAPOINTS_PER_DAY, index:index+1, day_of_week_i:day_of_week_i+1], DATAPOINTS_PER_DAY) * (1 - regulariser_coef) + np.full(DATAPOINTS_PER_DAY, avrg_weekday_full[index:index+1, day_of_week_i:day_of_week_i+1]) * regulariser_coef)
-#     for val_i in range(y_pred.shape[0]):
-#         print("y_test:",y_test[val_i]," y_pred:",y_pred[val_i])
     #print("R**2 score: ", r2_score(y_test, y_pred))
     return r2_score(y_test, y_pred)
 
@@ -377,11 +373,7 @@ def run_meanline(station_name):
         datapoint_i= i * DATAPOINTS_PER_DAY
         day_of_week_i= int((max_train_time + datapoint_i) / DATAPOINTS_PER_DAY) % len(DAYS_OF_WEEK)
         y_pred[datapoint_i:datapoint_i + DATAPOINTS_PER_DAY]= np.full(DATAPOINTS_PER_DAY, meanmean[index:index+1], dtype=np.float64)
-#     for val_i in range(y_pred.shape[0]):
-#         print("y_test:",y_test[val_i]," y_pred:",y_pred[val_i])
     #print("R**2 score: ", r2_score(y_test, y_pred))
-    #print("y_pred:",y_pred)
-    #print("y_test:",y_test)
     return r2_score(y_test, y_pred)
 
 
@@ -421,14 +413,14 @@ def baseline_graph():
 def compare_approaches(station_name1, station_name2, approach1, approach2, approach3=None):
     s1a1_r2s= []; s2a1_r2s= []; s1a2_r2s= []; s2a2_r2s= []; s1a3_r2s= []; s2a3_r2s= []
     
-    val= [0.9154489426476711, 0.9321981853574037, 0.9033862664158813, 0.8607531451151377, 0.8425975287920906]#approach1(station_name1)
+    val= approach1(station_name1) #[0.9154489426476711, 0.9321981853574037, 0.9033862664158813, 0.8607531451151377, 0.8425975287920906]#approach1(station_name1)
     print("approach1(station_name1):", val)
     if type(val) is list:
         s1a1_r2s= sorted(val)
     else:
         s1a1_r2s.append(val); s1a1_r2s.append(val); s1a1_r2s.append(val); s1a1_r2s.append(val); s1a1_r2s.append(val)
     
-    val= [0.77629295945547, 0.7949464686296777, 0.7967860515294295, 0.8358203281148665, 0.8471048354650209]#approach1(station_name2)
+    val= approach1(station_name2) #[0.77629295945547, 0.7949464686296777, 0.7967860515294295, 0.8358203281148665, 0.8471048354650209]#approach1(station_name2)
     print("approach1(station_name2):", val)
     if type(val) is list:
         s2a1_r2s= sorted(val)

@@ -4,6 +4,10 @@ See report: PredictDistribDublinBike.pdf
 
 ## Development Log
 
+14 / 08 / 2021
+
+* normalisation led to know notable gainz
+
 13 / 08 / 2021
 
 * omg I wasn't normalising the features this whole time 😳
