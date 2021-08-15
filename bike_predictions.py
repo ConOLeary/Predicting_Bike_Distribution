@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[159]:
+# In[1]:
 
 
 # IMPORTS & DEFINITIONS
@@ -99,7 +99,7 @@ def get_station_id(name):
     return index
 
 
-# In[ ]:
+# In[2]:
 
 
 # DATA STRUCTURING
@@ -154,7 +154,7 @@ for station_i, station in enumerate(stations):
                 last_percent_bikes= data_day.percent_bikes[val_i]
 
 
-# In[63]:
+# In[3]:
 
 
 # FEATURE DATA PREPERATION
@@ -278,7 +278,7 @@ for station_i in range(bikes_changes_pastx.shape[1]):
     scld_bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, station_i:station_i+1, 0:bikes_changes_pastx.shape[2]]= station_pastx
 
 
-# In[166]:
+# In[4]:
 
 
 # APPROACH DEFINITIONS
@@ -294,7 +294,6 @@ def get_error(y_pred, y_test):
             diff= min(abs(round(val) - round(val2)), len(y_pred))
             if diff != 0:
                 error[diff - 1]+= 1
-    print(error)
     if not np.any(errors[0]):
         errors[0]= error
     elif not np.any(errors[1]):
@@ -479,7 +478,7 @@ def run_meanline(station_name):
     return r2_score(y_test, y_pred)
 
 
-# In[93]:
+# In[7]:
 
 
 def baseline_graph():
@@ -606,16 +605,40 @@ def compare_approaches(station_name1, station_name2, approach1, approach2, appro
     plt.title('Approach Comparison')
     plt.show()
 
+def error_histo():
+    x= []
+    x2= []
+    for e_i, e in enumerate(errors[0]):
+        for n in range(e.astype(int).item()):
+            x.append(e_i + 1)
+    for e_i, e in enumerate(errors[1]):
+        for n in range(e.astype(int).item()):
+            x2.append(e_i + 1)
+    
+    n_bins= MAX_ERROR_DIFF
+    
+    fig, axs= plt.subplots(1, 2, sharey=True, sharex=True, tight_layout=True)
 
-# In[82]:
+    # We can set the number of bins with the `bins` kwarg
+    axs[0].hist(x, bins= n_bins)
+    axs[0].set(xlabel='Error size (in bikes)', ylabel='Error frequency')
+    axs[0].set_title('Approach 1; Portobello Road')
+    axs[1].hist(x2, bins= n_bins)
+    axs[1].set(xlabel='Error size (in bikes)', ylabel='Error frequency')
+    axs[1].set_title('Approach 2; Portobello Road')
+
+
+# In[8]:
 
 
 # DRIVER
-
 errors= np.zeros((3, MAX_ERROR_DIFF), dtype=np.int)
+run_approach1("PORTOBELLO ROAD")
+run_approach2("PORTOBELLO ROAD")
+error_histo()
 
 # neighbours_optimisation("PORTOBELLO ROAD", "CUSTOM HOUSE QUAY")
-# print("--------------------")
+print("--------------------")
 
 
 # In[ ]:
