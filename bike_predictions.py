@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[159]:
 
 
 # IMPORTS & DEFINITIONS
@@ -49,6 +49,8 @@ R= 0.5
 MAX_HINDSIGHT= 60 # minutes
 DAYS_PER_WEEKDAY= 5
 HOMEMADE_REGULISER= 0.8
+OPTIMAL_NEIGHBOURS= 30
+MAX_ERROR_DIFF= 20
 
 class DataDay: # ideally this would be nested in the Station class
     def __init__(self, index):
@@ -276,11 +278,32 @@ for station_i in range(bikes_changes_pastx.shape[1]):
     scld_bikes_changes_pastx[0:TOTAL_TIME_DATAPOINTS, station_i:station_i+1, 0:bikes_changes_pastx.shape[2]]= station_pastx
 
 
-# In[64]:
+# In[166]:
 
 
 # APPROACH DEFINITIONS
-    
+
+errors= np.zeros((3, MAX_ERROR_DIFF), dtype=np.int)
+
+def get_error(y_pred, y_test):
+    error= np.zeros(MAX_ERROR_DIFF, dtype=np.int)
+    for y_i, y in enumerate(y_pred):
+        for e_i in range(len(y_pred[y_i])):
+            val= y_pred[y_i][e_i]
+            val2= y_test[y_i][e_i]
+            diff= min(abs(round(val) - round(val2)), len(y_pred))
+            if diff != 0:
+                error[diff - 1]+= 1
+    print(error)
+    if not np.any(errors[0]):
+        errors[0]= error
+    elif not np.any(errors[1]):
+        errors[1]= error
+    elif not np.any(errors[2]):
+        errors[2]= error
+    else:
+        print("errors array all full!")
+
 def run_approach1(station_name):
     index= get_station_id(station_name)
     
@@ -310,6 +333,7 @@ def run_approach1(station_name):
         returns.append(regr.score(X_test, y_test))
         #print("R**2 score of data split", i, ": ", regr.score(X_test, y_test))
         i+= 1
+    get_error(y_pred, y_test)
     #print("\nAVERAGE R**2 score: ", score_sum / K)
     return returns
 
@@ -345,6 +369,7 @@ def run_approach1v2(station_name):
         returns.append(regr.score(X_test, y_test))
         #print("R**2 score of data split", i, ": ", regr.score(X_test, y_test))
         i+= 1
+    get_error(y_pred, y_test)
     #print("\nAVERAGE R**2 score: ", score_sum / K)
     return returns
 
@@ -380,10 +405,11 @@ def run_approach1v3(station_name):
         returns.append(regr.score(X_test, y_test))
         #print("R**2 score of data split", i, ": ", regr.score(X_test, y_test))
         i+= 1
+    get_error(y_pred, y_test)
     #print("\nAVERAGE R**2 score: ", score_sum / K)
     return returns
     
-def run_approach2(station_name, neighs= 35):
+def run_approach2(station_name, neighs= OPTIMAL_NEIGHBOURS):
     index= get_station_id(station_name)
     
     y= np.full((TOTAL_TIME_DATAPOINTS, 3), 0, dtype=np.int) # change the 3 to a 6 to do both stations at once on the generalised-training form of an approach
@@ -410,11 +436,23 @@ def run_approach2(station_name, neighs= 35):
     # X[0:TOTAL_TIME_DATAPOINTS, 2:110]= bikes_changes_past5
     # X[0:TOTAL_TIME_DATAPOINTS, 110:218]= bikes_changes_past15
     
-    neigh= KNeighborsRegressor(n_neighbors= neighs, weights='distance')
-    cv_scores= cross_val_score(neigh, X, y, cv=5)
-    #print(cv_scores) # print each cv score (accuracy) and average them
-    #print('cv_scores mean:{}'.format(np.mean(cv_scores)))
-    return cv_scores.tolist()
+    kf= KFold(n_splits= K)
+    kf.get_n_splits(X)
+    score_sum= 0.0
+    i= 1
+    returns= []
+    for train_index, test_index in kf.split(X):
+        X_train, X_test= X[train_index], X[test_index]
+        y_train, y_test= y[train_index], y[test_index]
+        neigh= KNeighborsRegressor(n_neighbors= neighs, weights='distance').fit(X_train, y_train)
+        y_pred= neigh.predict(X_test)
+        score_sum+= neigh.score(X_test, y_test)
+        returns.append(neigh.score(X_test, y_test))
+        #print("R**2 score of data split", i, ": ", regr.score(X_test, y_test))
+        i+= 1
+    get_error(y_pred, y_test)
+    #print("\nAVERAGE R**2 score: ", score_sum / K)
+    return returns
 
 def run_oldbaseline(station_name, regulariser_coef):
     index= get_station_id(station_name)
@@ -441,7 +479,7 @@ def run_meanline(station_name):
     return r2_score(y_test, y_pred)
 
 
-# In[79]:
+# In[93]:
 
 
 def baseline_graph():
@@ -569,13 +607,15 @@ def compare_approaches(station_name1, station_name2, approach1, approach2, appro
     plt.show()
 
 
-# In[80]:
+# In[82]:
 
 
 # DRIVER
 
-neighbours_optimisation("PORTOBELLO ROAD", "CUSTOM HOUSE QUAY")
-print("--------------------")
+errors= np.zeros((3, MAX_ERROR_DIFF), dtype=np.int)
+
+# neighbours_optimisation("PORTOBELLO ROAD", "CUSTOM HOUSE QUAY")
+# print("--------------------")
 
 
 # In[ ]:
