@@ -1,5 +1,7 @@
 # Predicting_bike_distribution
 
+Evaluated the feasibility of predicting bike station occupancy(fullness) 10, 30, and 60 minutes into the future using past data from gov.ie. Studied the efficacy of different machine learning approaches on two stations with different patterns of behaviour (Portobello Harbour and Custom House Quay).
+
 * **Data set:** [data.gov.ie/dataset/dublinbikes-api](https://data.gov.ie/dataset/dublinbikes-api)
 
 * **See report:** *PredictDistribDublinBike.pdf*
